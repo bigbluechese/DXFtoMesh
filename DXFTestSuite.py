@@ -11,6 +11,8 @@ Required Python Modules:
 
 import unittest
 from DXFtoSegments import VertexList, Vertex, DXFGeometry, drange
+import dxfgrabber
+import math
 #import matplotlib.pyplot as plt
 
 class TestVertex(unittest.TestCase):
@@ -195,10 +197,148 @@ class TestVertexList(unittest.TestCase):
                 and (old_position not in self.v_list.coordinates)
         self.assertTrue(check, 'vertex was not moved')
 
+class TestDXFGeometry(unittest.TestCase):
+    '''\tTest case for the DXFGeometry class'''
+    def setUp(self):
+        # Open DXF file for all tests
+        self.test_dxf = dxfgrabber.readfile('./DXFTests/DXFTest2.dxf')
+        self.empty_dxfgeom = DXFGeometry('./DXFTests/DXFTest2.dxf', testing=True)
+
+    def tearDown(self):
+        # Get rid of DXF file
+        self.test_dxf = None
+        self.empty_dxfgeom = None
+
+    def test_openDXF(self):
+        '''
+        Test that opens the file DXFTest2 and creates a DXFGeometry without
+        adding any entities
+        '''
+        # Use testing mode to keep from adding entities
+        dxf2 = DXFGeometry('./DXFTests/DXFTest2.dxf', testing=True)
+        # Test that the first entity is consistent
+        check = dxf2.dxf.entities[0].dxftype == self.test_dxf.entities[0].dxftype
+        self.assertTrue(check)
+        # Make sure that there are the same number of entities
+        check = len(dxf2.dxf.entities) == len(self.test_dxf.entities)
+        self.assertTrue(check)
+
+    def check_verticies(self, tup, dxfgeom, entity):
+        '''Checks whether verticies are in vertex list and whether they are
+        connected'''
+        start = tup[0]
+        end = tup[1]
+        # Check to make sure start and end are verticies now
+        check = (start in dxfgeom.verts.coordinates) and (end in dxfgeom.verts.coordinates)
+        msg = '{} and {} were not added to verticies'.format(start, end)
+        self.assertTrue(check, msg)
+        # Make sure verticies are connected
+        check = str(end) in dxfgeom.verts.verticies[str(start)].connected
+        msg = '{} not properly connected by line {}'.format(end, entity)
+        self.assertTrue(check, msg)
+
+    def test_add_line(self):
+        '''Tests ability to add a line to the geometry'''
+        # Loop through entities and add only lines
+        for e in self.test_dxf.entities:
+            if e.dxftype == 'LINE':
+                self.empty_dxfgeom.add_line(e)
+                start = (e.start[0], e.start[1])
+                end = (e.end[0], e.end[1])
+                self.check_verticies((start, end), self.empty_dxfgeom, e)
+                # Make sure lines are added to segments list
+                check = ((start, end), ()) in self.empty_dxfgeom.segments
+                msg = '{} not in segment list'.format((start, end))
+                self.assertTrue(check, msg)
+    def test_add_arc(self):
+        '''Tests ability to add an arc to the geometry'''
+        # Loop through entities and add only arcs
+        for e in self.test_dxf.entities:
+            if e.dxftype == 'ARC':
+                self.empty_dxfgeom.add_arc(e)
+                start_angle = math.radians(e.startangle)
+                end_angle = math.radians(e.endangle)
+                center = (e.center[0], e.center[1])
+                radius = e.radius
+                # Calculate bulge and start/stop information
+                bulge = math.tan((end_angle - start_angle)/4)
+                start = (radius*math.cos(start_angle) + center[0], 
+                         radius*math.sin(start_angle) + center[1])
+                end = (radius*math.cos(end_angle) + center[0], 
+                       radius*math.sin(end_angle) + center[1])
+                self.check_verticies((start, end), self.empty_dxfgeom, e)
+                # Make sure arcs were added to segment list
+                check = ((start, end), (bulge, start_angle, end_angle, center, \
+                         radius)) in self.empty_dxfgeom.segments
+                msg = '{} not in segment list'.format((start, end))
+                self.assertTrue(check, msg)
+    def test_add_polyline(self):
+        '''Tests ability to add an polyline to the geometry'''
+        # Loop through entities and add only arcs
+        for e in self.test_dxf.entities:
+            if e.dxftype == 'POLYLINE':
+                self.empty_dxfgeom.add_polyline(e)
+                for i, p in enumerate(e.points):
+                    try:
+                        p_next = e.points[i+1]
+                    except IndexError:
+                        if e.is_closed:
+                            p_next = e.points[0]
+                        else:
+                            break
+                    start = (p[0], p[1])
+                    end = (p_next[0], p_next[1])
+                    self.check_verticies((start, end), self.empty_dxfgeom, e)
+                    # Make sure at least straight lines are added to segments
+                    # list (check for arcs by inspection)
+                    check = ((start, end), ()) in self.empty_dxfgeom.segments
+                    msg = '{} not in segment list'.format((start, end))
+                    if e.bulge[i] == 0:
+                        self.assertTrue(check, msg)
+    def test_add_entities(self):
+        '''Tests ability to add entites from a DXF file'''
+        # Add entities
+        self.empty_dxfgeom.add_entities(self.test_dxf.entities)
+        # There should be 18 lines, arcs, and polylines in the file
+        num_ents = 18
+        num_added = len(self.empty_dxfgeom.segments)
+        check = num_added == num_ents
+        msg = '''{} entities were added but {} addable entities exist in test file
+              '''.format(num_added, num_ents)
+        self.assertTrue(check, msg)
+
+    def test_rem_reversed(self):
+        '''Tests the ability to remove reversed lines'''
+        # Lines to be added
+        lines = set([(( (0,0), (1,0) ), ()),
+                     (( (1,0), (0,0) ), ()),
+                     (( (0,0), (1,1) ), ())])
+
+        # Lines that are not duplicates
+        true_lines = set([(( (0,0), (1,0) ), ()),
+                          (( (0,0), (1,1) ), ())])
+        # Add all lines and verticies
+        self.empty_dxfgeom.segments = lines
+        for l in lines:
+            self.empty_dxfgeom.verts.add(l[0][0])
+            self.empty_dxfgeom.verts.add(l[0][1])
+            self.empty_dxfgeom.verts.connect(l[0][0], l[0][1])
+
+        # Remove reversed line
+        self.empty_dxfgeom.rem_reversed()
+
+        # Check whether it worked
+        check = self.empty_dxfgeom.segments == true_lines
+        msg = '''Extra line that should have been removed: {}
+              '''.format(self.empty_dxfgeom.segments - true_lines)
+
 def main():
-    suite1 = unittest.TestLoader().loadTestsFromTestCase(TestVertex)
-    suite2 = unittest.TestLoader().loadTestsFromTestCase(TestVertexList)
-    alltests = unittest.TestSuite([suite1, suite2])
+    suites = []
+    suites.append(unittest.TestLoader().loadTestsFromTestCase(TestVertex))
+    suite.append(unittest.TestLoader().loadTestsFromTestCase(TestVertexList))
+    if dxf_test:
+        suites.append(unittest.TestLoader().loadTestsFromTestCase(TestDXFGeometry))
+    alltests = unittest.TestSuite(suites)
     unittest.TextTestRunner(verbosity=2).run(alltests)
 
 # Check whether the script is being excuted by itself
