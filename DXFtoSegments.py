@@ -10,6 +10,7 @@ Requirements:
 - dxfgrabber 0.7.5
 - matplotlib (if plotting)
 - DXFTestSuite.py (if using this for testing)
+- DXFTests directory of DXF test files
 
 Usage:
 This script can either be used by importing its classes and using them in a
@@ -19,6 +20,13 @@ with the '-h' flag afterwards specificaly, './DXFtoSegments.py -h'
 
 Typing help(DXFtoSegments) in the interpreter will give you information about
 the classes and functions in this module and how they're used.
+
+DEVELOPMENT NOTES:
+- In the future it may be advantageous to add segments in batches rather than
+individually. This will make it faster to reverse the segments and check them
+because you would only have to reverse the segments you're adding. This would
+mean compiling a list of segments to be added rather than adding them
+individually.
 '''
 
 import dxfgrabber
@@ -29,6 +37,19 @@ if __name__=='__main__':
     import DXFTestSuite
 import unittest
 import math
+from matplotlib import pyplot as plt
+
+def angle_convert(angle, deg=False):
+    '''Converts an angle from a negative value to a value between 0 and 2*pi and
+    converts to radians if specified'''
+    if deg:
+        angle = angle*2*math.pi/360 # Convert to radians
+    if angle < 0:
+        new_angle = angle + 2*math.pi
+    else:
+        new_angle = angle
+    return new_angle
+
 
 def drange(start, stop, n_steps, use_start=True):
     '''
@@ -390,134 +411,311 @@ class DXFGeometry():
     The structure of the segments variable is set of length-2 tuples. Each tuple
     is defined by:
     (1)   a tuple of the endpoint coordinates (each given by a tuple)
-    (2)   a list of attributes about the bulge
+    (2)   a tuple of attributes about the bulge
 
-    The list of bulge attributes is ordered:
+    The tuple of bulge attributes is ordered:
     (i)   bulge value
     (ii)  arc beginning angle (relative to horizontal) (radians)
     (iii) arc ending angle (relative to horizontal) (radians)
     (iv)  arc center coordinates
     (v)   radius of arc
 
-    A straight line will contain an empty list for the bulge information
+    A straight line will contain an empty tuple for the bulge information
     '''
 
-    def __init__(self, dxf_file):
+    def __init__(self, dxf_file, testing=False, verbose=False):
         '''
         Reads the DXF file and any arguments that may have been passed to the
         class. This could include command-line arguments.
+
+        ARGUMENTS:
+        dxf_file (str)          --  Name of DXF file to be loaded
         '''
         self.dxf = dxfgrabber.readfile(dxf_file)
+        self.dxf_name = dxf_file
         self.verts = VertexList()
         self.segments = set([])
+        self.verbose = verbose
 
-        # Loop over the entities in the DXF file
-        for entity in self.dxf.entities:
+        # Add all entities in dxf_file to segments and verts if not testing
+        if not testing:
+            self.add_entities(self.dxf.entities)
+
+    def vprint(self, *args):
+        '''Printing function that is responsive to self.verbose'''
+        if self.verbose:
+            for arg in args:
+                print arg,
+            print
+
+    def add_dxf(self, dxf_file):
+        '''
+        Extracts the entities from a dxf file and adds them to the geometry.
+        This method is useful for merging two DXF files together.
+
+        ARGUMENTS:
+        dxf_file (str)          --  Name of DXF file to be loaded
+        '''
+        # Consider using a while structure with file to properly handle
+        dxf = dxfgrabber.readfile(dxf_file)
+        entities = dxf.entities
+        dxf = None # Not sure if this is necessary to close file
+        self.add_entities(entities)
+
+        return entities
+
+
+    def add_entities(self, dxfentities):
+        '''
+        Breaks up DXF entities to extract their segment and vertex information
+        and store that information. Also removes reversed duplicates after
+        adding the entities.
+
+        ARGUMENTS:
+        entities (obj)          --  DXFgrabber entity or entities object to be
+                                    added to be stored in segments and verts
+
+        RAISES:
+        TypeError               --  if dxftype attribute of the DXF entity is
+                                    not 'LINE', 'ARC', 'POLYLINE', 'CIRCLE', or
+                                    'POINT'. Currently, only the first three
+                                    are handled and the last two are ignored.
+
+        '''
+        # Check if object passed is a signle entity or not
+        try:
+            dxftype = dxfentities.dxftype
+        except AttributeError: #Collections don't have dxftype attribute
+            entities = dxfentities
+        else:
+            entities = [dxfentities] #Make into one-element list for looping
+
+        # Loop over entities
+        for entity in entities:
             if entity.dxftype == 'LINE':
                 self.add_line(entity)
             elif entity.dxftype == 'ARC':
                 self.add_arc(entity)
             elif entity.dxftype == 'POLYLINE':
-                pass
+                self.add_polyline(entity)
             elif entity.dxftype == 'CIRCLE':
                 pass
             elif entity.dxftype == 'POINT':
                 pass
+            else:
+                raise TypeError('DXF entitiy type, {}, is not supported'.format(entity.dxftype))
 
-    def add_line(self, dxfentity):
+    def add_line(self, entity):
         '''
         Converts a DXF line entity (or entitines) to the proper form and adds
         the information to the list of verticies and to the set of segments
 
         ARGUMENTS:
-        dxfentity (obj)         --  DXF entity or entities from dxfgrabber
+        entity (obj)            --  DXF entity from dxfgrabber
 
         RAISES:
-
+        TypeError               --  if entitiy.dxftype is not 'LINE'
         '''
-        try:
-            dxftype = dxfentity.dxftype
-        except AttributeError:
-            pass
-        else:
-            entities = [dxfentity]
+        # Check input
+        if entity.dxftype != 'LINE':
+            msg = 'dxf entitiy passed was not a LINE but a {}'.format(entity.dxftype)
+            raise TypeError(msg)
 
-        for entity in entities:
-            # Find end-points
-            start = (entity.start[0], entity.start[1])
-            end = (entity.end[0], entity.end[1])
+        # Find end-points
+        start = (entity.start[0], entity.start[1])
+        end = (entity.end[0], entity.end[1])
 
-            # Add verticies
-            self.verts.add(start)
-            self.verts.add(end)
+        # Add verticies and connect them
+        self.verts.add(start)
+        self.verts.add(end)
+        self.verts.connect(start, end)
 
-            # Collect segment data and add to set
-            seg = ((start, stop),[])
-            self.segments.add(seg)
+        # Collect segment data and add to set
+        seg = ((start, end),())
+        self.vprint('adding line {}'.format(seg[0]))
+        self.segments.add(seg)
 
-    def add_arc(self, dxfentity):
+    def add_arc(self, entity):
         '''
         Converts a DXF arc entity (or entities) to the proper form and adds the 
         information to the list of verticies and to the set of segments. Bulge
         and arc information is also compiled and computed.
 
         ARGUMENTS:
-        entity              --  DXF entity from dxfgrabber
+        entity (obj)            --  DXF entity from dxfgrabber
 
         RAISES:
-
+        TypeError               --  if entitiy.dxftype is not 'ARC'
         '''
-        try:
-            dxftype = dxfentity.dxftype
-        except AttributeError:
-            pass
-        else:
-            entities = [dxfentity]
+        # Check input
+        if entity.dxftype != 'ARC':
+            msg = 'dxf entitiy passed was not an ARC but a {}'.format(entity.dxftype)
+            raise TypeError(msg)
 
-        for entity in entities:
-            # Extract information (again ignoring z-coordinate)
-            theta0 = math.radians(entity.startangle)
-            theta1 = math.radians(entity.endangle)
-            center = (entity.center[0], entity.center[1])
-            radius = entity.radius
+        # Extract information (again ignoring z-coordinate)
+        start_angle = math.radians(entity.startangle)
+        end_angle = math.radians(entity.endangle)
+        center = (entity.center[0], entity.center[1])
+        radius = entity.radius
 
-            # Calculate bulge and start/stop information
-            bulge = math.tan((theta1 - theta0)/4)
-            start = (radius*math.cos(theta0) + center[0], 
-                     radius*math.sin(theta0) + center[1])
-            end = (radius*math.cos(theta1) + center[0], 
-                   radius*math.sin(theta1) + center[1])
+        # Calculate bulge and start/stop information
+        bulge = math.tan((end_angle - start_angle)/4)
+        start = (radius*math.cos(start_angle) + center[0], 
+                 radius*math.sin(start_angle) + center[1])
+        end = (radius*math.cos(end_angle) + center[0], 
+               radius*math.sin(end_angle) + center[1])
 
-            # Add verticies
+        # Add verticies and connect them
+        self.verts.add(start)
+        self.verts.add(end)
+        self.verts.connect(start, end)
+
+        # Collect segment data and add to set
+        seg = ((start, end), (bulge, start_angle, end_angle, center, radius))
+        self.vprint('adding arc {}'.format(seg[0]))
+        self.segments.add(seg)
+
+    def add_polyline(self, entity):
+        '''
+        Converts a DXF polyline entity into segments while transforming bulges
+        into arcs (defined by a center of curvature and radius of curvature) and
+        storing the vertex and segment information.
+
+        ARGUMENTS:
+        entity (obj)            --  DXF entity from dxfgrabber
+        
+        RAISES:
+        TypeError               --  if entitiy.dxftype is not 'POLYLINE'
+        '''
+        # Check input
+        if entity.dxftype != 'POLYLINE':
+            msg = 'dxf entitiy passed was not a POLYLINE but a {}'.format(entity.dxftype)
+            raise TypeError(msg)
+
+        # Loop through the points in the polyline
+        for i, point in enumerate(entity.points):
+            # Add the current point
+            start = (point[0], point[1])
             self.verts.add(start)
-            self.verts.add(end)
+            try:
+                # Add the next point if it exists
+                next_point = entity.points[i+1]
+            except IndexError:
+                # Next point DOESN'T exist therefore this is the end of the
+                # polyline
+                if entity.is_closed:
+                    # If polyline is closed, connect the last point (the current
+                    # point) back to the first point
+                    first_point = entity.points[0]
+                    end = (first_point[0], first_point[1])
+                    self.verts.connect(start, end)
+                else:
+                    # Otherwise the polyline is open so all segments have been
+                    # added already
+                    self.vprint('This polyline is not closed:\n\t {}'.format(entity))
+                    break
+            else:
+                # The next point DOES exist so add it and connect it to the
+                # current point
+                end = (next_point[0], next_point[1])
+                self.verts.add(end)
+                # Connect the two points
+                self.verts.connect(start, end)
 
-            # Collect segment data and add to set
-            seg = ((start, stop), [bulge, theta0, theta1, center, radius])
-            self.segments.add(seg)
+            # Check whether there is a bulge in this segment
+            if  entity.bulge[i] != 0:
+                # Convert bulge information to arc and store information
+                bulge = entity.bulge[i]
+                # Distance between points
+                d = math.sqrt((start[0] - end[0])**2 + (start[1] - start[1])**2)
+                # Angle between points from center
+                theta = angle_convert(4*math.atan(bulge))
+                # Radius of circle making arc
+                radius = d/2/math.sin(abs(theta)/2)
+                # Find angle of segment relative to x axis
+                alpha = math.atan2(end[1]-start[1], end[0]-start[0])
+                # Find angle between segment and radius and make the same sign
+                # as theta
+                beta = (math.pi/2 - abs(theta)/2)*theta/abs(theta)
+                # Angle to radius vector from x-axis is then the sum of alpha
+                # and beta
+                gamma = alpha + beta
+                # Gamma angle and radius describe the vector pointing from the
+                # start point to the center
+                center = (radius*math.cos(gamma)+start[0],
+                          radius*math.sin(gamma)+start[1])
+                # Now compute start and stop angles relative to horizontal
+                start_angle = math.atan2(start[1]-center[1], start[0]-center[0])
+                end_angle = math.atan2(end[1]-center[1], end[0]-center[0])
 
-    def add_polyline(self, dxfentity):
-        '''
-        '''
-        pass
+                # Compile all bulge/arc information and add it to segments
+                seg = ((start, end), (bulge, start_angle, end_angle, center,
+                                      radius))
+                self.vprint('adding arc {}'.format(seg[0]))
+                self.segments.add(seg)
+
+            # Segment is a straight line
+            else:
+                seg = ((start, end), ())
+                # Add info to segments
+                self.vprint('adding line {}'.format(seg[0]))
+                self.segments.add(seg)
 
     def rem_reversed(self):
         '''
+        Looks at the current set of segments and removes repeat segments that
+        exist as reversals of currently existing segments. This is accomplished
+        by reversing every segment (inclduing recalculating arc/bulge info) and
+        then trying to remove that segment from the segment set.
+        '''
+
+        pruned_segs = self.segments.copy()
+        for seg in self.segments.copy():
+            # First reverse the segment
+            rev_seg_coords = (seg[0][1], seg[0][0])
+            if seg[1] == ():
+                rev_seg_info = ()
+            else:
+                # Calculate reversed arc/bulge information
+                bulge, start_angle, end_angle, center, radius = seg[1]
+                rev_bulge = -bulge
+                rev_s_angle = end_angle
+                rev_e_angle = start_angle
+                rev_center = center
+                rev_radius = radius
+                rev_seg_info = (rev_bulge, rev_s_angle, rev_e_angle, rev_center,
+                    rev_radius)
+            # Create the reversed segment
+            rev_seg = (rev_seg_coords, rev_seg_info)
+            # Now determine if this segment already exists in the set
+            try:
+                pruned_segs.remove(rev_seg)
+            except KeyError:
+                continue #It's not in the segment list so move on
+        self.segments = pruned_segs
+        return pruned_segs
+
+    def display(self):
+        '''
+        Plots the current geometry
         '''
         pass
 
 
-
-def test_suite(verbose):
+def test_suite(verbose=False, dxf_test=False):
     '''Runs the test suite'''
     if verbose:
         verbosity = 2
     else:
         verbosity = 1
-    suite1 = unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertex)
-    suite2 = unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertexList)
-    alltests = unittest.TestSuite([suite1, suite2])
-
+    suites = []
+    suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertex))
+    suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertexList))
+    if dxf_test:
+        suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestDXFGeometry))
+        dxf = DXFGeometry('./DXFTests/DXFTest2.dxf')
+        dxf.display()
+    alltests = unittest.TestSuite(suites)
     unittest.TextTestRunner(verbosity=verbosity).run(alltests)
 
 def main():
@@ -539,32 +737,19 @@ def main():
                      name for the .pcs file can optionally be specified'''
     parser.add_argument('-c', '--crysmas', nargs='?', metavar='file',
                         const=True, help=help_string)
+    # Skip DXF tests if option is passed
+    help_string = '''Skips the DXF tests if testing mode is activated'''
+    parser.add_argument('-n', '--nodxf', action='store_true', help=help_string)
 
     args = parser.parse_args()
 
     # Specify testing mode from the command line
     if args.dxf_file == 'test':
         testing = True
-        test_suite(args.verbose)
+        test_suite(verbose=args.verbose, dxf_test=not(args.nodxf))
     # Otherwise create a DXF geometry object
     else:
-        pass
-
-    # Depending on whether verbose mode is enabled, the vprint() function will
-    # either print or do nothing. This implementation is faster so that the
-    # "if verbose" statement isn't being evaluated each time.
-    if args.verbose:
-        # Define a verbose print function only when verbose mode is enabled
-        def vprint(*args):
-            # Basically do the same as print
-            for arg in args:
-                print arg,
-            print
-    else:
-        # Otherwise, the vprint() function will simply do nothing
-        vprint = lambda *a: None
-
-
+        dxf = DXFGeometry(args.dxf_file, verbose=args.verbose)
 
 
 # Check whether the script is being excuted by itself
