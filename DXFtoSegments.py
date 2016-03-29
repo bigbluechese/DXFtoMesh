@@ -699,6 +699,8 @@ class DXFGeometry():
         '''
         Plots the current geometry
         '''
+
+        
         pass
 
 
