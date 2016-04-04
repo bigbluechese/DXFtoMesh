@@ -37,19 +37,16 @@ if __name__=='__main__':
     import DXFTestSuite
 import unittest
 import math
+import numpy as np
 from matplotlib import pyplot as plt
 
-def angle_convert(angle, deg=False):
-    '''Converts an angle from a negative value to a value between 0 and 2*pi and
-    converts to radians if specified'''
-    if deg:
-        angle = angle*2*math.pi/360 # Convert to radians
+def angle360(angle):
+    '''Converts an angle from a domain of [-pi, pi] to [0, 2*pi]'''
     if angle < 0:
-        new_angle = angle + 2*math.pi
+        new_angle = 2*np.pi + angle
     else:
         new_angle = angle
     return new_angle
-
 
 def drange(start, stop, n_steps, use_start=True):
     '''
@@ -627,26 +624,29 @@ class DXFGeometry():
                 # Convert bulge information to arc and store information
                 bulge = entity.bulge[i]
                 # Distance between points
-                d = math.sqrt((start[0] - end[0])**2 + (start[1] - start[1])**2)
+                d = math.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
                 # Angle between points from center
-                theta = angle_convert(4*math.atan(bulge))
+                theta = 4*math.atan(bulge)
                 # Radius of circle making arc
                 radius = d/2/math.sin(abs(theta)/2)
                 # Find angle of segment relative to x axis
                 alpha = math.atan2(end[1]-start[1], end[0]-start[0])
-                # Find angle between segment and radius and make the same sign
-                # as theta
-                beta = (math.pi/2 - abs(theta)/2)*theta/abs(theta)
+                # Find angle between segment and radius (obtuse is negative)
+                beta = (math.pi/2 - abs(theta)/2)*\
+                           (math.pi - theta)/abs(math.pi - theta)
                 # Angle to radius vector from x-axis is then the sum of alpha
                 # and beta
-                gamma = alpha + beta
+                gamma = alpha - beta
                 # Gamma angle and radius describe the vector pointing from the
                 # start point to the center
                 center = (radius*math.cos(gamma)+start[0],
                           radius*math.sin(gamma)+start[1])
-                # Now compute start and stop angles relative to horizontal
-                start_angle = math.atan2(start[1]-center[1], start[0]-center[0])
-                end_angle = math.atan2(end[1]-center[1], end[0]-center[0])
+                # Now compute start and stop angles relative to horizontal in
+                # a counter-clockwise sense
+                start_angle = angle360(math.atan2(start[1]-center[1], 
+                                                  start[0]-center[0]))
+                end_angle = angle360(math.atan2(end[1]-center[1],
+                                                end[0]-center[0]))
 
                 # Compile all bulge/arc information and add it to segments
                 seg = ((start, end), (bulge, start_angle, end_angle, center,
@@ -697,12 +697,56 @@ class DXFGeometry():
 
     def display(self):
         '''
-        Plots the current geometry
+        Plots the current geometry but does not display it. In order to display
+        the plot, a plt.show() call must be made after the display() method is
+        used.
         '''
+        def arc_points(bulge, center, radius, startangle, endangle):
+            '''
+            Creates a series of points that form an arc. Outputs series of x
+            points and y points that form arc.
+            '''
+            if bulge > 0:
+                angles = np.linspace(startangle, endangle, num=50)
+            else:
+                angles = np.linspace(endangle, startangle, num=50)
+            x_vals = radius*np.cos(angles) + center[0]
+            y_vals = radius*np.sin(angles) + center[1]
+            return (x_vals, y_vals)
 
-        
-        pass
+        def seg_plot(segment):
+            '''
+            Creates information for a plot from a segment
+            '''
+            # If segment is a straight line, this will evaluate true
+            if not segment[1]:
+                x_vals, y_vals = zip(*segment[0])
+            # Otherwise extract the arc information and generate x,y points
+            else:
+                bulge = segment[1][0]
+                startangle = segment[1][1]
+                endangle = segment[1][2]
+                center = segment[1][3]
+                radius = segment[1][4]
+                x_vals, y_vals = arc_points(bulge, center, radius, startangle,
+                                            endangle)
+            return (x_vals, y_vals)
 
+        # Set up the plot space
+        fig1, ax1 = plt.subplots()
+
+        # Plot the lines and arcs
+        for seg in self.segments:
+            x, y = seg_plot(seg)
+            ax1.plot(x,y, 'b')
+
+        # Plot vertex locations
+        x_coords, y_coords = zip(*self.verts.coordinates)
+        ax1.plot(x_coords, y_coords, 'ks')
+
+        # Create the plot
+        plt.axis('scaled')
+        plt.draw() # Plot must be shown to be visible so after calling the
 
 def test_suite(verbose=False, dxf_test=False):
     '''Runs the test suite'''
@@ -715,10 +759,18 @@ def test_suite(verbose=False, dxf_test=False):
     suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertexList))
     if dxf_test:
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestDXFGeometry))
-        dxf = DXFGeometry('./DXFTests/DXFTest2.dxf')
-        dxf.display()
+        dxf1 = DXFGeometry('./DXFTests/DXFTest1.dxf')
+        dxf1.display()
+        dxf2 = DXFGeometry('./DXFTests/DXFTest2.dxf')
+        dxf2.display()
+        dxf3 = DXFGeometry('./DXFTests/DXFTest3.dxf')
+        dxf3.display()
+        dxf4 = DXFGeometry('./DXFTests/DXFTest4.dxf')
+        dxf4.display()
     alltests = unittest.TestSuite(suites)
     unittest.TextTestRunner(verbosity=verbosity).run(alltests)
+    # Show the plotted DXF file if available
+    plt.show()
 
 def main():
     # NOTE: Argument parsing requires Python 2.7x or higher
@@ -741,7 +793,7 @@ def main():
                         const=True, help=help_string)
     # Skip DXF tests if option is passed
     help_string = '''Skips the DXF tests if testing mode is activated'''
-    parser.add_argument('-n', '--nodxf', action='store_true', help=help_string)
+    parser.add_argument('--nodxf', action='store_true', help=help_string)
 
     args = parser.parse_args()
 

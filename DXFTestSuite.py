@@ -295,6 +295,7 @@ class TestDXFGeometry(unittest.TestCase):
                     msg = '{} not in segment list'.format((start, end))
                     if e.bulge[i] == 0:
                         self.assertTrue(check, msg)
+
     def test_add_entities(self):
         '''Tests ability to add entites from a DXF file'''
         # Add entities
@@ -331,6 +332,45 @@ class TestDXFGeometry(unittest.TestCase):
         check = self.empty_dxfgeom.segments == true_lines
         msg = '''Extra line that should have been removed: {}
               '''.format(self.empty_dxfgeom.segments - true_lines)
+
+    def test_arc_calc(self):
+        dxf = DXFGeometry('./DXFTests/DXFTest1.dxf')
+        tol = 1e-12 # Tolerance for positional differences
+        # Check that segment points are consistent with arc end points
+        checks = ''
+        for seg in dxf.segments:
+            # Skip straight lines
+            if not seg[1]:
+                continue
+            start = seg[0][0]
+            end = seg[0][1]
+            center = seg[1][3]
+            radius = seg[1][4]
+            sangle = seg[1][1]
+            eangle = seg[1][2]
+            calc_start = (radius*math.cos(sangle)+center[0], 
+                          radius*math.sin(sangle)+center[1])
+            calc_end = (radius*math.cos(eangle)+center[0], 
+                        radius*math.sin(eangle)+center[1])
+            # Look for differences
+            diff = (calc_start[0]-start[0], calc_start[1] - start[1])
+            if abs(diff[0]) > tol or abs(diff[1]) > tol:
+                msg = '''\tActual starting point: {}
+                         Calculated starting point: {}
+                         \tDifference: {}
+                      '''.format(start, calc_start, diff)
+                checks = checks + msg
+            diff = (calc_end[0]-end[0], calc_end[1] - end[1])
+            tol = 1e-12
+            if abs(diff[0]) > tol or abs(diff[1]) > tol:
+                msg = '''\tActual end point: {}
+                         Calculated end point: {}
+                         \tDifference: {}
+                      '''.format(end, calc_end, diff)
+                checks = checks + msg
+        # Now check whether anything failed beyond tolerance
+        self.assertFalse(checks, checks)
+
 
 def main():
     suites = []
