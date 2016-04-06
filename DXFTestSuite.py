@@ -10,9 +10,10 @@ Required Python Modules:
 '''
 
 import unittest
-from DXFtoSegments import VertexList, Vertex, DXFGeometry, drange
+from DXFtoSegments import VertexList, Vertex, DXFGeometry, ccw_angle_diff
 import dxfgrabber
 import math
+import numpy as np
 #import matplotlib.pyplot as plt
 
 class TestVertex(unittest.TestCase):
@@ -93,8 +94,8 @@ class TestVertexList(unittest.TestCase):
         x_steps, y_steps = 10, 10 #Range/domain of verticies
         self.x_low, self.x_high, self.y_low, self.y_high = 0., 1., 0., 1.
         self.v_list = VertexList()
-        for x in drange(self.x_low, self.x_high, x_steps):
-            for y in drange(self.y_low, self.y_high, y_steps):
+        for x in np.linspace(self.x_low, self.x_high, x_steps):
+            for y in np.linspace(self.y_low, self.y_high, y_steps):
                 self.v_grid.add((x, y)) #Add each vertex
 
     def tearDown(self):
@@ -115,8 +116,8 @@ class TestVertexList(unittest.TestCase):
             self.v_list.add(v)
         # Now connect corners together
         corners = set([])
-        for x in drange(self.x_low, self.x_high, 2):
-            for y in drange(self.y_low, self.y_high, 2):
+        for x in np.linspace(self.x_low, self.x_high, 2):
+            for y in np.linspace(self.y_low, self.y_high, 2):
                 corners.add(str((x,y)))
         # Connect vertex to every other vertex except itself
         for c1 in corners:
@@ -148,8 +149,8 @@ class TestVertexList(unittest.TestCase):
             self.v_list.add(v)
         # Now all connect corners together
         corners = set([])
-        for x in drange(self.x_low, self.x_high, 2):
-            for y in drange(self.y_low, self.y_high, 2):
+        for x in np.linspace(self.x_low, self.x_high, 2):
+            for y in np.linspace(self.y_low, self.y_high, 2):
                 corners.add(str((x,y)))
         # Connect vertex to every other vertex except itself
         for c1 in corners:
@@ -243,7 +244,8 @@ class TestDXFGeometry(unittest.TestCase):
         for e in self.test_dxf.entities:
             if e.dxftype == 'LINE':
                 self.empty_dxfgeom.add_line(e)
-                start = (e.start[0], e.start[1])
+                start = (self.empty_dxfgeom.approx(e.start[0]), 
+                         self.empty_dxfgeom.approx(e.start[1]))
                 end = (e.end[0], e.end[1])
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
                 # Make sure lines are added to segments list
@@ -261,11 +263,12 @@ class TestDXFGeometry(unittest.TestCase):
                 center = (e.center[0], e.center[1])
                 radius = e.radius
                 # Calculate bulge and start/stop information
-                bulge = math.tan((end_angle - start_angle)/4)
-                start = (radius*math.cos(start_angle) + center[0], 
-                         radius*math.sin(start_angle) + center[1])
-                end = (radius*math.cos(end_angle) + center[0], 
-                       radius*math.sin(end_angle) + center[1])
+                theta = ccw_angle_diff(start_angle, end_angle)
+                bulge = math.tan(theta/4)
+                start = (self.empty_dxfgeom.approx(radius*math.cos(start_angle) + center[0]), 
+                         self.empty_dxfgeom.approx(radius*math.sin(start_angle) + center[1]))
+                end = (self.empty_dxfgeom.approx(radius*math.cos(end_angle) + center[0]), 
+                       self.empty_dxfgeom.approx(radius*math.sin(end_angle) + center[1]))
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
                 # Make sure arcs were added to segment list
                 check = ((start, end), (bulge, start_angle, end_angle, center, \
@@ -286,8 +289,10 @@ class TestDXFGeometry(unittest.TestCase):
                             p_next = e.points[0]
                         else:
                             break
-                    start = (p[0], p[1])
-                    end = (p_next[0], p_next[1])
+                    start = (self.empty_dxfgeom.approx(p[0]),
+                             self.empty_dxfgeom.approx(p[1]))
+                    end = (self.empty_dxfgeom.approx(p_next[0]), 
+                            self.empty_dxfgeom.approx(p_next[1]))
                     self.check_verticies((start, end), self.empty_dxfgeom, e)
                     # Make sure at least straight lines are added to segments
                     # list (check for arcs by inspection)

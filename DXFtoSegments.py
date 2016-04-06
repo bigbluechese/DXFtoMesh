@@ -34,7 +34,7 @@ import argparse
 import re
 from numbers import Number
 if __name__=='__main__':
-    import DXFTestSuite
+    import DXFTestSuite # Run test suite from this file
 import unittest
 import math
 import numpy as np
@@ -48,20 +48,101 @@ def angle360(angle):
         new_angle = angle
     return new_angle
 
-def drange(start, stop, n_steps, use_start=True):
+def anglespace(start, stop, num=50, endpoint=True, retstep=False):
     '''
-    Generator that creates a decimal range from start to stop using n_steps
+    Return evenly spaced angles over a specified angle range in polar
+    coordiantes.
+
+    Returns `num` evenly spaced angles calculated over the interval
+    [`start`, `stop`] in the counter-clockwise direction. If `start` is greater
+    than `stop`, the function will return points that increase from `start`
+    until 2*pi and will then restart at zero up until `stop`. A full circle
+    would then be specified from 0 to 2*pi.
+
+    ARGUMENTS:
+    start : scalar (radians)
+        Starting angle for the sequence. Must be within the closed interval 
+        [-2*pi, 2*pi].
+    stop : scalar (radians)
+        End value for the sequence unless `enpoint` is False. In that case, the
+        sequence consists of all but the last of num+1 evenly spaced samples
+        so that `stop` is excluded. Note that the step size changes when
+        `endpoint` is False. Must be within the closed interval 
+        [-2*pi, 2*pi].
+    num : int [optional]
+        Number of samples to generate (default is 50)
+    endpoint : bool [optional]
+        If True, then `stop` is the last sample. Otherwise it is not included.
+        (Default is true)
+    retstep : bool [optional]
+        If True, return (`samples`, `step`) where `step` is the spacing between
+        samples.
+
+    RETURNS:
+    samples : ndarray
+        `num` equally-spaced samples in the closed interval [start, stop] or
+        the half-open interval [start, stop) depending on whether `endpoint` is
+        True or False.
+    step : float
+        Size of spacing between samples
     '''
-    if n_steps <=1 or type(n_steps) != int:
-        raise ValueError('number of steps must be an integer greater than 1')
-    if start == stop:
-        raise ValueError('Start and stop cannot be the same value')
-    incr = (float(stop) - float(start))/(n_steps - 1)
-    for i in range(n_steps):
-        val = start + i*incr
-        if use_start==False and i==0:
-            continue
-        yield val
+    # Check if angles are within ranges
+    if start < -2*np.pi or start > 2*np.pi:
+        raise ValueError('start must be within range [-2*pi, 2*pi]')
+    if stop < -2*np.pi or stop > 2*np.pi:
+        raise ValueError('stop must be within range [-2*pi, 2*pi]')
+
+    # Make angle always increasing by adding 2*pi to end
+    if stop < start:
+        end = stop + 2*np.pi
+        beg = start
+    else:
+        beg = start
+        end = stop
+
+    # Calculate stepsize
+    step = (end - beg)/(num - 1)
+
+    # Remove endpoint if desired
+    if not endpoint:
+        step = (end - beg)/num
+        stop = stop - step
+
+    # Calculate switching index where angle would exceed 360 degrees
+    num_switch = int(np.floor(np.around((2*np.pi - start)/step,decimals=12)))+1
+
+    # Create output array from start to zero and then to end or directly to end
+    if num_switch < num:
+        first_stop = start + (num_switch-1)*step
+        first_set = np.linspace(start, first_stop, num_switch)
+        second_start = first_stop + step - 2*np.pi
+        second_set = np.linspace(second_start, stop, num - num_switch)
+        samples = np.concatenate((first_set, second_set))
+    else:
+        samples = np.linspace(start, stop, num)
+
+    # Return step size if desired
+    if retstep:
+        return samples, step
+    else:
+        return samples
+
+def ccw_angle_diff(start, end):
+    '''Calculates the difference between two angles in the counter-clockwise
+    direction. For example, if the end angle is less than the starting angle,
+    this means that the difference will be larger than pi radians'''
+    # Check if angles are within ranges
+    if start < -2*np.pi or start > 2*np.pi:
+        raise ValueError('start must be within range [-2*pi, 2*pi]')
+    if end < -2*np.pi or end > 2*np.pi:
+        raise ValueError('stop must be within range [-2*pi, 2*pi]')
+    # Check whether difference goes through zero
+    if end <= start:
+        diff = end + 2*np.pi - start
+    else:
+        diff = end - start
+    # Return the difference
+    return diff
 
 def tuple2_check(var):
     '''
@@ -403,6 +484,8 @@ class DXFGeometry():
     segments (set)              --  Set of segments defined by two points
                                     along with additional information in the
                                     case of arcs/bulges.
+    tol (float)                 --  The tolerance to which all positions are
+                                    specified (default 1.0e-08)
 
     Segments data structure:
     The structure of the segments variable is set of length-2 tuples. Each tuple
@@ -420,19 +503,37 @@ class DXFGeometry():
     A straight line will contain an empty tuple for the bulge information
     '''
 
-    def __init__(self, dxf_file, testing=False, verbose=False):
+    def __init__(self, dxf_file, testing=False, verbose=False, tol=1.0e-08):
         '''
         Reads the DXF file and any arguments that may have been passed to the
         class. This could include command-line arguments.
 
         ARGUMENTS:
         dxf_file (str)          --  Name of DXF file to be loaded
+
+        OPTIONAL ARGUMENTS:
+        testing (bool)          --  If testing mode is activated, entities are
+                                    NOT added from the DXF file.
+                                    (Default = False)
+        verbose (bool)          --  When vebose is True, every entity added
+                                    will have information about it printed.
+                                    (Default = False)
+        tol (float)             --  The tolerance to which all positions will be
+                                    rounded. This is important when points 
+                                    overlap in the DXF file but differ slightly
+                                    in their coordinates. Without the tolerance,
+                                    these would be treated as separate points
+                                    when the user might intend that they are the
+                                    same point. This often happens with repeated
+                                    patterns.
+                                    (Default = 1.0e-08)
         '''
         self.dxf = dxfgrabber.readfile(dxf_file)
         self.dxf_name = dxf_file
         self.verts = VertexList()
         self.segments = set([])
         self.verbose = verbose
+        self.tol = tol #Rounds coordinates to this tolerance
 
         # Add all entities in dxf_file to segments and verts if not testing
         if not testing:
@@ -444,6 +545,14 @@ class DXFGeometry():
             for arg in args:
                 print arg,
             print
+    def approx(self, val):
+        '''Approximates a value to the given tolerance'''
+        decimals = np.abs(np.floor(np.log10(np.abs(self.tol))).astype(int))
+        new_val = round(val, decimals)
+        if new_val == -0.0:
+            new_val = 0.0 #Get rid of negative zero
+        #print val, new_val
+        return new_val
 
     def add_dxf(self, dxf_file):
         '''
@@ -519,8 +628,8 @@ class DXFGeometry():
             raise TypeError(msg)
 
         # Find end-points
-        start = (entity.start[0], entity.start[1])
-        end = (entity.end[0], entity.end[1])
+        start = (self.approx(entity.start[0]), self.approx(entity.start[1]))
+        end = (self.approx(entity.end[0]), self.approx(entity.end[1]))
 
         # Add verticies and connect them
         self.verts.add(start)
@@ -550,17 +659,18 @@ class DXFGeometry():
             raise TypeError(msg)
 
         # Extract information (again ignoring z-coordinate)
-        start_angle = math.radians(entity.startangle)
-        end_angle = math.radians(entity.endangle)
+        start_angle = np.radians(entity.startangle)
+        end_angle = np.radians(entity.endangle)
         center = (entity.center[0], entity.center[1])
         radius = entity.radius
 
         # Calculate bulge and start/stop information
-        bulge = math.tan((end_angle - start_angle)/4)
-        start = (radius*math.cos(start_angle) + center[0], 
-                 radius*math.sin(start_angle) + center[1])
-        end = (radius*math.cos(end_angle) + center[0], 
-               radius*math.sin(end_angle) + center[1])
+        theta = ccw_angle_diff(start_angle, end_angle)
+        bulge = np.tan(theta/4)
+        start = (self.approx(radius*np.cos(start_angle) + center[0]), 
+                 self.approx(radius*np.sin(start_angle) + center[1]))
+        end = (self.approx(radius*np.cos(end_angle) + center[0]), 
+               self.approx(radius*np.sin(end_angle) + center[1]))
 
         # Add verticies and connect them
         self.verts.add(start)
@@ -589,10 +699,11 @@ class DXFGeometry():
             msg = 'dxf entitiy passed was not a POLYLINE but a {}'.format(entity.dxftype)
             raise TypeError(msg)
 
+        self.vprint('Breaking up this polyline into segments:\n{}'.format(entity))
         # Loop through the points in the polyline
         for i, point in enumerate(entity.points):
             # Add the current point
-            start = (point[0], point[1])
+            start = (self.approx(point[0]), self.approx(point[1]))
             self.verts.add(start)
             try:
                 # Add the next point if it exists
@@ -604,19 +715,21 @@ class DXFGeometry():
                     # If polyline is closed, connect the last point (the current
                     # point) back to the first point
                     first_point = entity.points[0]
-                    end = (first_point[0], first_point[1])
+                    end = (self.approx(first_point[0]), 
+                           self.approx(first_point[1]))
                     self.verts.connect(start, end)
                 else:
                     # Otherwise the polyline is open so all segments have been
                     # added already
-                    self.vprint('This polyline is not closed:\n\t {}'.format(entity))
+                    self.vprint('\tThis polyline is not closed!')
                     break
             else:
                 # The next point DOES exist so add it and connect it to the
                 # current point
-                end = (next_point[0], next_point[1])
+                end = (self.approx(next_point[0]), self.approx(next_point[1]))
                 self.verts.add(end)
                 # Connect the two points
+                #print start, end
                 self.verts.connect(start, end)
 
             # Check whether there is a bulge in this segment
@@ -624,41 +737,41 @@ class DXFGeometry():
                 # Convert bulge information to arc and store information
                 bulge = entity.bulge[i]
                 # Distance between points
-                d = math.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
+                d = np.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
                 # Angle between points from center
-                theta = 4*math.atan(bulge)
+                theta = 4*np.arctan(bulge)
                 # Radius of circle making arc
-                radius = d/2/math.sin(abs(theta)/2)
+                radius = d/2/np.sin(abs(theta)/2)
                 # Find angle of segment relative to x axis
-                alpha = math.atan2(end[1]-start[1], end[0]-start[0])
+                alpha = np.arctan2(end[1]-start[1], end[0]-start[0])
                 # Find angle between segment and radius (obtuse is negative)
-                beta = (math.pi/2 - abs(theta)/2)*\
-                           (math.pi - theta)/abs(math.pi - theta)
+                beta = (np.pi/2 - abs(theta)/2)*\
+                           (np.pi - theta)/abs(np.pi - theta)
                 # Angle to radius vector from x-axis is then the sum of alpha
                 # and beta
                 gamma = alpha - beta
                 # Gamma angle and radius describe the vector pointing from the
                 # start point to the center
-                center = (radius*math.cos(gamma)+start[0],
-                          radius*math.sin(gamma)+start[1])
+                center = (radius*np.cos(gamma)+start[0],
+                          radius*np.sin(gamma)+start[1])
                 # Now compute start and stop angles relative to horizontal in
                 # a counter-clockwise sense
-                start_angle = angle360(math.atan2(start[1]-center[1], 
+                start_angle = angle360(np.arctan2(start[1]-center[1], 
                                                   start[0]-center[0]))
-                end_angle = angle360(math.atan2(end[1]-center[1],
+                end_angle = angle360(np.arctan2(end[1]-center[1],
                                                 end[0]-center[0]))
 
                 # Compile all bulge/arc information and add it to segments
                 seg = ((start, end), (bulge, start_angle, end_angle, center,
                                       radius))
-                self.vprint('adding arc {}'.format(seg[0]))
+                self.vprint('\tadding arc {}'.format(seg[0]))
                 self.segments.add(seg)
 
             # Segment is a straight line
             else:
                 seg = ((start, end), ())
                 # Add info to segments
-                self.vprint('adding line {}'.format(seg[0]))
+                self.vprint('\tadding line {}'.format(seg[0]))
                 self.segments.add(seg)
 
     def rem_reversed(self):
@@ -699,7 +812,7 @@ class DXFGeometry():
         '''
         Plots the current geometry but does not display it. In order to display
         the plot, a plt.show() call must be made after the display() method is
-        used.
+        used with plt of course being the matplotlib.pyplot module.
         '''
         def arc_points(bulge, center, radius, startangle, endangle):
             '''
@@ -713,6 +826,22 @@ class DXFGeometry():
             x_vals = radius*np.cos(angles) + center[0]
             y_vals = radius*np.sin(angles) + center[1]
             return (x_vals, y_vals)
+
+        def arc_points2(bulge, center, radius, startangle, endangle):
+            '''
+            Creates a series of points that form an arc. Outputs series of x
+            points and y points that form arc. Correctly accounts for the fact
+            that the start angle could be larger than the end angle.
+            '''
+            # If the bulge is less than 0, arc must be defined clockwise
+            if bulge > 0:
+                angles = anglespace(startangle, endangle, num=50)
+            else:
+                angles = anglespace(endangle, startangle, num=50)
+            x_vals = radius*np.cos(angles) + center[0]
+            y_vals = radius*np.sin(angles) + center[1]
+            return (x_vals, y_vals)
+
 
         def seg_plot(segment):
             '''
@@ -728,7 +857,7 @@ class DXFGeometry():
                 endangle = segment[1][2]
                 center = segment[1][3]
                 radius = segment[1][4]
-                x_vals, y_vals = arc_points(bulge, center, radius, startangle,
+                x_vals, y_vals = arc_points2(bulge, center, radius, startangle,
                                             endangle)
             return (x_vals, y_vals)
 
