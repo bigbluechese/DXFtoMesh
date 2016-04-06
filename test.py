@@ -17,3 +17,6 @@ for i, s in enumerate(dxf1.segments):
 
 seg = list(dxf1.segments)[ind]
 info = seg[1]
+
+print seg[0]
+print info

@@ -637,9 +637,12 @@ class DXFGeometry():
         self.verts.connect(start, end)
 
         # Collect segment data and add to set
+        initial_len = len(self.segments)
         seg = ((start, end),())
         self.vprint('adding line {}'.format(seg[0]))
         self.segments.add(seg)
+        if len(self.segments) == initial_len:
+            self.vprint('\tSegment already exists... skipped')
 
     def add_arc(self, entity):
         '''
@@ -678,9 +681,12 @@ class DXFGeometry():
         self.verts.connect(start, end)
 
         # Collect segment data and add to set
+        initial_len = len(self.segments)
         seg = ((start, end), (bulge, start_angle, end_angle, center, radius))
         self.vprint('adding arc {}'.format(seg[0]))
         self.segments.add(seg)
+        if len(self.segments) == initial_len:
+            self.vprint('\tSegment already exists... skipped')
 
     def add_polyline(self, entity):
         '''
@@ -732,6 +738,9 @@ class DXFGeometry():
                 #print start, end
                 self.verts.connect(start, end)
 
+            # Find number of segments before adding this one
+            initial_len = len(self.segments)
+
             # Check whether there is a bulge in this segment
             if  entity.bulge[i] != 0:
                 # Convert bulge information to arc and store information
@@ -744,12 +753,24 @@ class DXFGeometry():
                 radius = d/2/np.sin(abs(theta)/2)
                 # Find angle of segment relative to x axis
                 alpha = np.arctan2(end[1]-start[1], end[0]-start[0])
-                # Find angle between segment and radius (obtuse is negative)
-                beta = (np.pi/2 - abs(theta)/2)*\
-                           (np.pi - theta)/abs(np.pi - theta)
-                # Angle to radius vector from x-axis is then the sum of alpha
-                # and beta
-                gamma = alpha - beta
+                # beta = (np.pi/2 - abs(theta)/2)*(np.pi - abs(theta))/abs(np.pi - abs(theta))
+                # # Angle to radius vector from x-axis is then the sum of alpha
+                # # and beta
+                # gamma = alpha + beta
+                if bulge > 0:
+                    # Find angle between segment and radius. Beta is negative if
+                    # theta is greater than pi
+                    beta = np.pi/2 - theta/2
+                    # Angle to radius vector from x-axis is then the SUM of
+                    # alpha and beta
+                    gamma = alpha + beta
+                else:
+                    # Find angle between segment and radius. Beta is negative if
+                    # theta is greater than pi
+                    beta = np.pi/2 + theta/2
+                    # Angle to radius vector from x-axis is then the DIFFERENCE
+                    # between alpha and beta
+                    gamma = alpha - beta
                 # Gamma angle and radius describe the vector pointing from the
                 # start point to the center
                 center = (radius*np.cos(gamma)+start[0],
@@ -766,6 +787,8 @@ class DXFGeometry():
                                       radius))
                 self.vprint('\tadding arc {}'.format(seg[0]))
                 self.segments.add(seg)
+                if len(self.segments) == initial_len:
+                    self.vprint('\tSegment already exists... skipped')
 
             # Segment is a straight line
             else:
@@ -773,6 +796,8 @@ class DXFGeometry():
                 # Add info to segments
                 self.vprint('\tadding line {}'.format(seg[0]))
                 self.segments.add(seg)
+                if len(self.segments) == initial_len:
+                    self.vprint('\tSegment already exists... skipped')
 
     def rem_reversed(self):
         '''
