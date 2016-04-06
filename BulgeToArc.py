@@ -45,7 +45,7 @@ def center(segment):
     alpha = math.atan2(end[1]-start[1], end[0]-start[0])
     beta = math.radians(beta2(segment))
     gamma = alpha - beta
-    print math.degrees(gamma)
+    print 'alpha: {}, beta: {}, gamma: {}'.format(math.degrees(alpha), math.degrees(beta), math.degrees(gamma))
     center = (r*math.cos(gamma)+start[0], r*math.sin(gamma)+start[1])
     return center
 

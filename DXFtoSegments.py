@@ -842,7 +842,6 @@ class DXFGeometry():
             y_vals = radius*np.sin(angles) + center[1]
             return (x_vals, y_vals)
 
-
         def seg_plot(segment):
             '''
             Creates information for a plot from a segment
