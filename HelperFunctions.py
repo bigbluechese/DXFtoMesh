@@ -8,12 +8,18 @@ import numpy as np
 import re
 from numbers import Number
 
-def angle360(angle):
+def angle360(angle, decimals=15):
     '''Converts an angle from a domain of [-pi, pi] to [0, 2*pi]'''
+    angle = np.around(angle, decimals)
     if angle < 0:
         new_angle = 2*np.pi + angle
+    elif angle >= 2*np.pi:
+        new_angle = angle - 2*np.pi
     else:
         new_angle = angle
+    # Correct for negative zero angles
+    if new_angle == -0.0:
+        new_angle = 0.0
     return new_angle
 
 def anglespace(start, stop, num=50, endpoint=True, retstep=False):
@@ -95,7 +101,17 @@ def anglespace(start, stop, num=50, endpoint=True, retstep=False):
     else:
         return samples
 
-def bulge_to_arc(start, end, bulge):
+def approx(val, tol=1.0e-08):
+    '''Approximates a value to the given tolerance'''
+    decimals = np.abs(np.floor(np.log10(np.abs(tol))).astype(int))
+    new_val = round(val, decimals)
+    if new_val == -0.0:
+        new_val = 0.0 #Get rid of negative zero
+    #print val, new_val
+    return new_val
+
+
+def bulge_to_arc(start, end, bulge, tol=1.0e-08):
     '''
     Converts bulge information into arc information and outputs all of the
     information as a tuple.
@@ -105,13 +121,23 @@ def bulge_to_arc(start, end, bulge):
     end (tuple)         --  Ending coordinates for segment
     bulge (float)       --  Bulge value associated with the segment as defined
                             by Autodesk conventions
+
+    RETURNS:
+    ((start, end), (bulge, start_angle, end_angle, center, radius))
+    start (tuple)       --  See arguments
+    end (tuple)         --  See arguments
+    bulge (float)       --  See arguments (negative for clockwise arc)
+    start_angle (float) --  Starting angle for arc
+    end_angle (float)   --  Ending angle for arc
+    center (tuple)      --  Coordinates for center of arc
+    radius (float)      --  Radius of arc
     '''
     # Distance between points
     d = np.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
     # Angle between points from center
     theta = 4*np.arctan(bulge)
     # Radius of circle making arc
-    radius = d/2/np.sin(abs(theta)/2)
+    radius = approx(d/2/np.sin(abs(theta)/2), tol=1e-12)
     # Find angle of segment relative to x axis
     alpha = np.arctan2(end[1]-start[1], end[0]-start[0])
     # Find angle between radius vector (from center to point 1) and x-axis
@@ -130,8 +156,8 @@ def bulge_to_arc(start, end, bulge):
         gamma = alpha - beta
     # Gamma angle and radius describe the vector pointing from the start point
     # to the center
-    center = (radius*np.cos(gamma)+start[0],
-              radius*np.sin(gamma)+start[1])
+    center = (approx(radius*np.cos(gamma)+start[0], tol=tol),
+              approx(radius*np.sin(gamma)+start[1], tol=tol))
     # Now compute start and stop angles relative to horizontal in a
     # counter-clockwise sense
     start_angle = angle360(np.arctan2(start[1]-center[1], 

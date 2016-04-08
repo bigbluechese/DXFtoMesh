@@ -14,7 +14,7 @@ from DXFtoSegments import VertexList, Vertex, DXFGeometry, ccw_angle_diff
 import dxfgrabber
 import math
 import numpy as np
-#import matplotlib.pyplot as plt
+from HelperFunctions import bulge_to_arc, approx
 
 class TestVertex(unittest.TestCase):
     '''
@@ -227,8 +227,9 @@ class TestDXFGeometry(unittest.TestCase):
     def check_verticies(self, tup, dxfgeom, entity):
         '''Checks whether verticies are in vertex list and whether they are
         connected'''
-        start = tup[0]
-        end = tup[1]
+        tol = dxfgeom.tol
+        start = (approx(tup[0][0], tol), approx(tup[0][1],tol))
+        end = (approx(tup[1][0], tol), approx(tup[1][1],tol))
         # Check to make sure start and end are verticies now
         check = (start in dxfgeom.verts.coordinates) and (end in dxfgeom.verts.coordinates)
         msg = '{} and {} were not added to verticies'.format(start, end)
@@ -255,17 +256,19 @@ class TestDXFGeometry(unittest.TestCase):
         for e in self.test_dxf.entities:
             if e.dxftype == 'ARC':
                 self.empty_dxfgeom.add_arc(e)
+                tol = self.empty_dxfgeom.tol
                 start_angle = math.radians(e.startangle)
                 end_angle = math.radians(e.endangle)
-                center = (e.center[0], e.center[1])
+                center = (approx(e.center[0], tol=tol), 
+                          approx(e.center[1], tol=tol))
                 radius = e.radius
                 # Calculate bulge and start/stop information
                 theta = ccw_angle_diff(start_angle, end_angle)
                 bulge = math.tan(theta/4)
-                start = (self.empty_dxfgeom.approx(radius*math.cos(start_angle) + center[0]), 
-                         self.empty_dxfgeom.approx(radius*math.sin(start_angle) + center[1]))
-                end = (self.empty_dxfgeom.approx(radius*math.cos(end_angle) + center[0]), 
-                       self.empty_dxfgeom.approx(radius*math.sin(end_angle) + center[1]))
+                start = (approx(radius*math.cos(start_angle) + center[0]), 
+                         approx(radius*math.sin(start_angle) + center[1]))
+                end = (approx(radius*math.cos(end_angle) + center[0], tol=tol), 
+                       approx(radius*math.sin(end_angle) + center[1], tol=tol))
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
 
     def test_add_polyline(self):
@@ -301,38 +304,46 @@ class TestDXFGeometry(unittest.TestCase):
         self.assertTrue(check, msg)
 
     def test_rem_reversed(self):
-        '''Tests the ability to remove reversed lines'''
+        '''Tests the ability to remove reversed lines and arcs'''
         # Lines to be added
         lines = set([(( (0,0), (1,0) ), ()),
                      (( (1,0), (0,0) ), ()),
                      (( (0,0), (1,1) ), ())])
-
         # Arcs to be added
-        arcs = set([(( (0,0), (1,0) ), (1, )),
-                    (( (1,0), (0,0) ), ()),
-                    (( (0,0), (1,1) ), ())])
+        arcs = set([])
+        bulges = [1, -1, 1]
+        for l, b in zip(lines, bulges):
+            start = l[0][0]
+            end = l[0][1]
+            segment = bulge_to_arc(start, end, b)
+            arcs.add(segment)
 
-        # Lines that are not duplicates
+        # Lines that are not duplicates:
         true_lines = set([(( (0,0), (1,0) ), ()),
                           (( (0,0), (1,1) ), ())])
+        # Arcs that are not duplicates:
+        true_arcs = set([bulge_to_arc((0,0), (1,0), -1),
+                         bulge_to_arc((0,0), (1,1), 1)])
+
         # Add all lines and verticies
-        self.empty_dxfgeom.segments = lines
+        self.empty_dxfgeom.segments |= lines | arcs
         for l in lines:
             self.empty_dxfgeom.verts.add(l[0][0])
             self.empty_dxfgeom.verts.add(l[0][1])
             self.empty_dxfgeom.verts.connect(l[0][0], l[0][1])
 
-        # Remove reversed line
+        # Remove reversed line and arc
         self.empty_dxfgeom.rem_reversed()
 
         # Check whether it worked
-        check = self.empty_dxfgeom.segments == true_lines
+        check = self.empty_dxfgeom.segments == true_lines | true_arcs
         msg = '''Extra line that should have been removed: {}
-              '''.format(self.empty_dxfgeom.segments - true_lines)
+              '''.format(self.empty_dxfgeom.segments - true_lines | true_arcs)
+        self.assertTrue(check, msg)
 
     def test_arc_calc(self):
         dxf = DXFGeometry('./DXFTests/DXFTest1.dxf')
-        tol = 1e-12 # Tolerance for positional differences
+        tol = dxf.tol # Tolerance for positional differences
         # Check that segment points are consistent with arc end points
         checks = ''
         for seg in dxf.segments:
@@ -358,7 +369,6 @@ class TestDXFGeometry(unittest.TestCase):
                       '''.format(start, calc_start, diff)
                 checks = checks + msg
             diff = (calc_end[0]-end[0], calc_end[1] - end[1])
-            tol = 1e-12
             if abs(diff[0]) > tol or abs(diff[1]) > tol:
                 msg = '''\tActual end point: {}
                          Calculated end point: {}
