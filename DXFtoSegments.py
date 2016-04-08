@@ -127,6 +127,53 @@ def anglespace(start, stop, num=50, endpoint=True, retstep=False):
     else:
         return samples
 
+def bulge_to_arc(start, end, bulge):
+    '''
+    Converts bulge information into arc information and outputs all of the
+    information as a tuple.
+
+    ARGUMENTS:
+    start (tuple)       --  Starting coordinates for segment
+    end (tuple)         --  Ending coordinates for segment
+    bulge (float)       --  Bulge value associated with the segment as defined
+                            by Autodesk conventions
+    '''
+    # Distance between points
+    d = np.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
+    # Angle between points from center
+    theta = 4*np.arctan(bulge)
+    # Radius of circle making arc
+    radius = d/2/np.sin(abs(theta)/2)
+    # Find angle of segment relative to x axis
+    alpha = np.arctan2(end[1]-start[1], end[0]-start[0])
+    # Find angle between radius vector (from center to point 1) and x-axis
+    if bulge > 0:
+        # Find angle between segment and radius. Beta is negative if theta is
+        # greater than pi
+        beta = np.pi/2 - theta/2
+        # Angle to radius vector from x-axis is then the SUM of alpha and beta
+        gamma = alpha + beta
+    else:
+        # Find angle between segment and radius. Beta is negative if theta is
+        # greater than pi
+        beta = np.pi/2 + theta/2
+        # Angle to radius vector from x-axis is then the DIFFERENCE between
+        # alpha and beta
+        gamma = alpha - beta
+    # Gamma angle and radius describe the vector pointing from the start point
+    # to the center
+    center = (radius*np.cos(gamma)+start[0],
+              radius*np.sin(gamma)+start[1])
+    # Now compute start and stop angles relative to horizontal in a
+    # counter-clockwise sense
+    start_angle = angle360(np.arctan2(start[1]-center[1], 
+                                      start[0]-center[0]))
+    end_angle = angle360(np.arctan2(end[1]-center[1],
+                                    end[0]-center[0]))
+
+    # Compile all bulge/arc information and add it to segments
+    return ((start, end), (bulge, start_angle, end_angle, center, radius))
+
 def ccw_angle_diff(start, end):
     '''Calculates the difference between two angles in the counter-clockwise
     direction. For example, if the end angle is less than the starting angle,

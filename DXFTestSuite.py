@@ -248,10 +248,7 @@ class TestDXFGeometry(unittest.TestCase):
                          self.empty_dxfgeom.approx(e.start[1]))
                 end = (e.end[0], e.end[1])
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
-                # Make sure lines are added to segments list
-                check = ((start, end), ()) in self.empty_dxfgeom.segments
-                msg = '{} not in segment list'.format((start, end))
-                self.assertTrue(check, msg)
+
     def test_add_arc(self):
         '''Tests ability to add an arc to the geometry'''
         # Loop through entities and add only arcs
@@ -270,11 +267,7 @@ class TestDXFGeometry(unittest.TestCase):
                 end = (self.empty_dxfgeom.approx(radius*math.cos(end_angle) + center[0]), 
                        self.empty_dxfgeom.approx(radius*math.sin(end_angle) + center[1]))
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
-                # Make sure arcs were added to segment list
-                check = ((start, end), (bulge, start_angle, end_angle, center, \
-                         radius)) in self.empty_dxfgeom.segments
-                msg = '{} not in segment list'.format((start, end))
-                self.assertTrue(check, msg)
+
     def test_add_polyline(self):
         '''Tests ability to add an polyline to the geometry'''
         # Loop through entities and add only arcs
@@ -294,12 +287,6 @@ class TestDXFGeometry(unittest.TestCase):
                     end = (self.empty_dxfgeom.approx(p_next[0]), 
                             self.empty_dxfgeom.approx(p_next[1]))
                     self.check_verticies((start, end), self.empty_dxfgeom, e)
-                    # Make sure at least straight lines are added to segments
-                    # list (check for arcs by inspection)
-                    check = ((start, end), ()) in self.empty_dxfgeom.segments
-                    msg = '{} not in segment list'.format((start, end))
-                    if e.bulge[i] == 0:
-                        self.assertTrue(check, msg)
 
     def test_add_entities(self):
         '''Tests ability to add entites from a DXF file'''
@@ -319,6 +306,11 @@ class TestDXFGeometry(unittest.TestCase):
         lines = set([(( (0,0), (1,0) ), ()),
                      (( (1,0), (0,0) ), ()),
                      (( (0,0), (1,1) ), ())])
+
+        # Arcs to be added
+        arcs = set([(( (0,0), (1,0) ), (1, )),
+                    (( (1,0), (0,0) ), ()),
+                    (( (0,0), (1,1) ), ())])
 
         # Lines that are not duplicates
         true_lines = set([(( (0,0), (1,0) ), ()),
