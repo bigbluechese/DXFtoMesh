@@ -1,4 +1,9 @@
 #!/usr/bin/python
+'''
+Function for creating new test standards for the DXF-specific tests. Create new
+standards with caution as overwriting the correct standard may hide errors that
+the testing suite won't identify.
+'''
 
 import numpy as np
 import DXFtoSegments

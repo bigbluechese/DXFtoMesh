@@ -3,18 +3,15 @@
 '''
 Code Written by Jeff Peterson (2016)
 A suite of tests for checking the functionality of the DXFtoSegments module.
-
-Required Python Modules:
-- DXFtoSegments
-- MatPlotLib
 '''
 
 import unittest
-from DXFtoSegments import VertexList, Vertex, DXFGeometry, ccw_angle_diff
+from DXFtoSegments import VertexList, Vertex, DXFGeometry
 import dxfgrabber
 import math
 import numpy as np
-from HelperFunctions import bulge_to_arc, approx
+from HelperFunctions import bulge_to_arc, approx, ccw_angle_diff
+import pickle
 
 class TestVertex(unittest.TestCase):
     '''
@@ -203,30 +200,15 @@ class TestDXFGeometry(unittest.TestCase):
     def setUp(self):
         # Open DXF file for all tests
         self.test_dxf = dxfgrabber.readfile('./DXFTests/DXFTest2.dxf')
-        self.empty_dxfgeom = DXFGeometry('./DXFTests/DXFTest2.dxf', testing=True)
+        self.empty_dxfgeom = DXFGeometry('empty_test', testing=True)
 
     def tearDown(self):
         # Get rid of DXF file
         self.test_dxf = None
         self.empty_dxfgeom = None
 
-    def test_openDXF(self):
-        '''
-        Test that opens the file DXFTest2 and creates a DXFGeometry without
-        adding any entities
-        '''
-        # Use testing mode to keep from adding entities
-        dxf2 = DXFGeometry('./DXFTests/DXFTest2.dxf', testing=True)
-        # Test that the first entity is consistent
-        check = dxf2.dxf.entities[0].dxftype == self.test_dxf.entities[0].dxftype
-        self.assertTrue(check)
-        # Make sure that there are the same number of entities
-        check = len(dxf2.dxf.entities) == len(self.test_dxf.entities)
-        self.assertTrue(check)
-
     def check_verticies(self, tup, dxfgeom, entity):
-        '''Checks whether verticies are in vertex list and whether they are
-        connected'''
+        '''verticies are in vertex list and they are connected'''
         tol = dxfgeom.tol
         start = (approx(tup[0][0], tol), approx(tup[0][1],tol))
         end = (approx(tup[1][0], tol), approx(tup[1][1],tol))
@@ -240,7 +222,7 @@ class TestDXFGeometry(unittest.TestCase):
         self.assertTrue(check, msg)
 
     def test_add_line(self):
-        '''Tests ability to add a line to the geometry'''
+        '''add a line to the geometry'''
         # Loop through entities and add only lines
         for e in self.test_dxf.entities:
             if e.dxftype == 'LINE':
@@ -251,7 +233,7 @@ class TestDXFGeometry(unittest.TestCase):
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
 
     def test_add_arc(self):
-        '''Tests ability to add an arc to the geometry'''
+        '''add an arc to the geometry'''
         # Loop through entities and add only arcs
         for e in self.test_dxf.entities:
             if e.dxftype == 'ARC':
@@ -272,7 +254,7 @@ class TestDXFGeometry(unittest.TestCase):
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
 
     def test_add_polyline(self):
-        '''Tests ability to add an polyline to the geometry'''
+        '''add a polyline to the geometry'''
         # Loop through entities and add only arcs
         for e in self.test_dxf.entities:
             if e.dxftype == 'POLYLINE':
@@ -292,7 +274,7 @@ class TestDXFGeometry(unittest.TestCase):
                     self.check_verticies((start, end), self.empty_dxfgeom, e)
 
     def test_add_entities(self):
-        '''Tests ability to add entites from a DXF file'''
+        '''add entites from a DXF file'''
         # Add entities
         self.empty_dxfgeom.add_entities(self.test_dxf.entities)
         # There should be 18 lines, arcs, and polylines in the file
@@ -304,7 +286,7 @@ class TestDXFGeometry(unittest.TestCase):
         self.assertTrue(check, msg)
 
     def test_rem_reversed(self):
-        '''Tests the ability to remove reversed lines and arcs'''
+        '''remove reversed lines and arcs'''
         # Lines to be added
         lines = set([(( (0,0), (1,0) ), ()),
                      (( (1,0), (0,0) ), ()),
@@ -341,52 +323,27 @@ class TestDXFGeometry(unittest.TestCase):
               '''.format(self.empty_dxfgeom.segments - true_lines | true_arcs)
         self.assertTrue(check, msg)
 
-    def test_arc_calc(self):
-        dxf = DXFGeometry('./DXFTests/DXFTest1.dxf')
-        tol = dxf.tol # Tolerance for positional differences
-        # Check that segment points are consistent with arc end points
-        checks = ''
-        for seg in dxf.segments:
-            # Skip straight lines
-            if not seg[1]:
-                continue
-            start = seg[0][0]
-            end = seg[0][1]
-            center = seg[1][3]
-            radius = seg[1][4]
-            sangle = seg[1][1]
-            eangle = seg[1][2]
-            calc_start = (radius*math.cos(sangle)+center[0], 
-                          radius*math.sin(sangle)+center[1])
-            calc_end = (radius*math.cos(eangle)+center[0], 
-                        radius*math.sin(eangle)+center[1])
-            # Look for differences
-            diff = (calc_start[0]-start[0], calc_start[1] - start[1])
-            if abs(diff[0]) > tol or abs(diff[1]) > tol:
-                msg = '''\tActual starting point: {}
-                         Calculated starting point: {}
-                         \tDifference: {}
-                      '''.format(start, calc_start, diff)
-                checks = checks + msg
-            diff = (calc_end[0]-end[0], calc_end[1] - end[1])
-            if abs(diff[0]) > tol or abs(diff[1]) > tol:
-                msg = '''\tActual end point: {}
-                         Calculated end point: {}
-                         \tDifference: {}
-                      '''.format(end, calc_end, diff)
-                checks = checks + msg
-        # Now check whether anything failed beyond tolerance
-        self.assertFalse(checks, checks)
+class DXFTestCases(unittest.TestCase):
+    '''Specific test cases for comparing DXF Geometries against known standards'''
+    def setUp(self):
+        self.test_path = './DXFTests/'
+        self.num_tests = 4
+
+    def test_DXFs(self):
+        '''DXF geometries are same as saved standards'''
+        for i in range(self.num_tests):
+            dxf = DXFGeometry('{0}DXFTest{1}.dxf'.format(self.test_path, i+1), testing=True)
+            standard = open('{0}DXFTest{1}_segments.set'.format(self.test_path, 
+                            i+1), 'rb')
+            std_segs = pickle.load(standard)
+            check = dxf.segments == std_segs
+            msg = '''DXFTest{} Geometry does not match standard geometry'''.format(i)
+            self.assertTrue(check, msg)
 
 
 def main():
-    suites = []
-    suites.append(unittest.TestLoader().loadTestsFromTestCase(TestVertex))
-    suite.append(unittest.TestLoader().loadTestsFromTestCase(TestVertexList))
-    if dxf_test:
-        suites.append(unittest.TestLoader().loadTestsFromTestCase(TestDXFGeometry))
-    alltests = unittest.TestSuite(suites)
-    unittest.TextTestRunner(verbosity=2).run(alltests)
+    print '''Please run the test suite from the MeshGenerator.py file by using
+    the command line argument `test` with the optional verbose mode.'''
 
 # Check whether the script is being excuted by itself
 if __name__=='__main__':

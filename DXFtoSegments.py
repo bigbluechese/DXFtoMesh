@@ -1,25 +1,11 @@
 #!/usr/bin/python
-
 '''
 Code Written by Jeff Peterson (2016)
-Takes a DXF file and converts it into segments (which can be arcs or lines) and
-vertexes. Currently the code does nothing with circles. 
 
-Requirements:
-- Python 2.7x
-- dxfgrabber 0.7.5
-- matplotlib (if plotting)
-- DXFTestSuite.py (if using this for testing)
-- DXFTests directory of DXF test files
-
-Usage:
-This script can either be used by importing its classes and using them in a
-separate script or by running this script directly. The script takes input from
-the command line and the usage for which can be found by running this script
-with the '-h' flag afterwards specificaly, './DXFtoSegments.py -h'
-
-Typing help(DXFtoSegments) in the interpreter will give you information about
-the classes and functions in this module and how they're used.
+The DXFGeometry object in this file is the primary class. It can be used to read
+a DXF file and then convert the information into a form that can then be used
+in the construction of a computational mesh. This module should be imported into
+another script and the classes used there.
 
 DEVELOPMENT NOTES:
 - In the future it may be advantageous to add segments in batches rather than
@@ -33,8 +19,6 @@ import dxfgrabber
 import argparse
 import re
 from numbers import Number
-if __name__=='__main__':
-    import DXFTestSuite # Run test suite from this file
 import unittest
 import math
 import numpy as np
@@ -83,7 +67,8 @@ class Vertex():
         self.y = coords[1]
         self.id = str(coords)
         self.connected = set([])
-        self.tuple_check = re.compile('[(]([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*), ([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*)[)]')
+        se_pattern = '[-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*'
+        self.tuple_check = re.compile('[(]({0}), ({0})[)]'.format(se_pattern))
 
     def con(self, vertexID):
         '''
@@ -102,7 +87,9 @@ class Vertex():
         except TypeError:
             raise('vertex to be connected must be a string')
         except ValueError:
-            msg = 'Cannot connect vertex \'{}\' because is not the correct form. Vertex IDs must be str() applied to a two-element tuple containing numbers'.format(vertexID)
+            msg = '''Cannot connect vertex \'{}\' because is not the correct
+            form. Vertex IDs must be str() applied to a two-element tuple
+            containing numbers'''.format(vertexID)
             raise TypeError(msg)
         if vertexID == self.id:
             raise RuntimeError('Cannot connect a vertex to itself')
@@ -127,7 +114,9 @@ class Vertex():
         except TypeError:
             raise('vertex to be connected must be a string')
         except ValueError:
-            msg = 'Cannot disconnect vertex \'{}\' because is not the correct form. Vertex IDs must be str() applied to a two-element tuple containing numbers'.format(vertexID)
+            msg = '''Cannot disconnect vertex \'{}\' because is not the correct
+            form. Vertex IDs must be str() applied to a two-element tuple
+            containing numbers'''.format(vertexID)
             raise TypeError(msg)
 
         # Raise error if not connected
@@ -240,7 +229,8 @@ class VertexList():
         try:
             self.verticies[vertex2].discon(vertex1)
         except KeyError:
-            raise RuntimeError('Vertex connection not symmetric: {} does not contain connection info for {}'.format(vertex2, vertex1))
+            raise RuntimeError('''Vertex connection not symmetric: {} does not
+                    contain connection info for {}'''.format(vertex2, vertex1))
 
     def remove(self, v_coords):
         '''
@@ -364,16 +354,27 @@ class DXFGeometry():
                                     patterns.
                                     (Default = 1.0e-08)
         '''
-        self.dxf = dxfgrabber.readfile(dxf_file)
         self.dxf_name = dxf_file
         self.verts = VertexList()
         self.segments = set([])
         self.verbose = verbose
         self.tol = tol #Rounds coordinates to this tolerance
+        self.testing = testing
+        no_file = False
+
+        # If testing, don't worry about file name
+        try:
+            self.dxf = dxfgrabber.readfile(dxf_file)
+        except IOError:
+            if not self.testing:
+                raise
+            else:
+                no_file = True
 
         # Add all entities in dxf_file to segments and verts if not testing
-        if not testing:
+        if not no_file:
             self.add_entities(self.dxf.entities)
+            self.rem_reversed()
 
     def vprint(self, *args):
         '''Printing function that is responsive to self.verbose'''
@@ -381,16 +382,6 @@ class DXFGeometry():
             for arg in args:
                 print arg,
             print
-    def approx(self, val, tol=None):
-        '''Approximates a value to the given tolerance'''
-        if not tol:
-            tol = self.tol #Default tolerance set by class default
-        decimals = np.abs(np.floor(np.log10(np.abs(tol))).astype(int))
-        new_val = round(val, decimals)
-        if new_val == -0.0:
-            new_val = 0.0 #Get rid of negative zero
-        #print val, new_val
-        return new_val
 
     def add_dxf(self, dxf_file):
         '''
@@ -672,6 +663,8 @@ class DXFGeometry():
             else:
                 continue
         self.segments = pruned_segs
+        if not self.testing:
+            print 'Reversed segments have been removed from {}'.format(self.dxf_name)
         return pruned_segs
 
     def display(self):
@@ -729,63 +722,13 @@ class DXFGeometry():
         plt.axis('scaled')
         plt.draw() # Plot must be shown to be visible so after calling the
 
-def test_suite(verbose=False, dxf_test=False):
-    '''Runs the test suite'''
-    if verbose:
-        verbosity = 2
-    else:
-        verbosity = 1
-    suites = []
-    suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertex))
-    suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertexList))
-    if dxf_test:
-        suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestDXFGeometry))
-        dxf1 = DXFGeometry('./DXFTests/DXFTest1.dxf')
-        dxf1.display()
-        dxf2 = DXFGeometry('./DXFTests/DXFTest2.dxf')
-        dxf2.display()
-        dxf3 = DXFGeometry('./DXFTests/DXFTest3.dxf')
-        dxf3.display()
-        dxf4 = DXFGeometry('./DXFTests/DXFTest4.dxf')
-        dxf4.display()
-    alltests = unittest.TestSuite(suites)
-    unittest.TextTestRunner(verbosity=verbosity).run(alltests)
-    # Show the plotted DXF file if available
-    plt.show()
+        print 'Geometry for {} is queued for display...'.format(self.dxf_name)
 
 def main():
-    # NOTE: Argument parsing requires Python 2.7x or higher
-    # Parses command-line input arguemtns
-    help_string = '''Reads a DXF file and then converts it to a suitable form
-                     for use in creating computational meshes for CrysMAS and 
-                     Cats2D'''
-    parser = argparse.ArgumentParser(description=help_string)
-    # Specify the DXF file (required)
-    help_string = '''Specify the DXF file to convert or specify \'test\' to run
-                     the test suite'''
-    parser.add_argument('dxf_file', action='store', type=str, 
-                        metavar='dxf_file or \'test\'', help=help_string)
-    # Create verbose mode
-    parser.add_argument('-v', '--verbose', action='store_true')
-    # Specify whether information should be output to CrysMAS and optionally specify a new filename
-    help_string = '''Turn the DXF file into a CrysMAS .pcs mesh file. A file 
-                     name for the .pcs file can optionally be specified'''
-    parser.add_argument('-c', '--crysmas', nargs='?', metavar='file',
-                        const=True, help=help_string)
-    # Skip DXF tests if option is passed
-    help_string = '''Skips the DXF tests if testing mode is activated'''
-    parser.add_argument('--nodxf', action='store_true', help=help_string)
-
-    args = parser.parse_args()
-
-    # Specify testing mode from the command line
-    if args.dxf_file == 'test':
-        testing = True
-        test_suite(verbose=args.verbose, dxf_test=not(args.nodxf))
-    # Otherwise create a DXF geometry object
-    else:
-        dxf = DXFGeometry(args.dxf_file, verbose=args.verbose)
-
+    print '''This file contains classes that are used to create a DXFGeometry
+    object from a DXF file for then creating a computational mesh in either
+    CrysMAS or Cats2D. Please run the MeshGenerator.py file for usage
+    information'''
 
 # Check whether the script is being excuted by itself
 if __name__=="__main__":
