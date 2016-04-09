@@ -224,11 +224,12 @@ class TestDXFGeometry(unittest.TestCase):
     def test_add_line(self):
         '''add a line to the geometry'''
         # Loop through entities and add only lines
+        tol = self.empty_dxfgeom.tol
         for e in self.test_dxf.entities:
             if e.dxftype == 'LINE':
                 self.empty_dxfgeom.add_line(e)
-                start = (self.empty_dxfgeom.approx(e.start[0]), 
-                         self.empty_dxfgeom.approx(e.start[1]))
+                start = (approx(e.start[0], tol=tol), 
+                         approx(e.start[1], tol=tol))
                 end = (e.end[0], e.end[1])
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
 
@@ -247,8 +248,8 @@ class TestDXFGeometry(unittest.TestCase):
                 # Calculate bulge and start/stop information
                 theta = ccw_angle_diff(start_angle, end_angle)
                 bulge = math.tan(theta/4)
-                start = (approx(radius*math.cos(start_angle) + center[0]), 
-                         approx(radius*math.sin(start_angle) + center[1]))
+                start = (approx(radius*math.cos(start_angle) + center[0], tol=tol), 
+                         approx(radius*math.sin(start_angle) + center[1], tol=tol))
                 end = (approx(radius*math.cos(end_angle) + center[0], tol=tol), 
                        approx(radius*math.sin(end_angle) + center[1], tol=tol))
                 self.check_verticies((start, end), self.empty_dxfgeom, e)
@@ -256,6 +257,7 @@ class TestDXFGeometry(unittest.TestCase):
     def test_add_polyline(self):
         '''add a polyline to the geometry'''
         # Loop through entities and add only arcs
+        tol = self.empty_dxfgeom.tol
         for e in self.test_dxf.entities:
             if e.dxftype == 'POLYLINE':
                 self.empty_dxfgeom.add_polyline(e)
@@ -267,10 +269,10 @@ class TestDXFGeometry(unittest.TestCase):
                             p_next = e.points[0]
                         else:
                             break
-                    start = (self.empty_dxfgeom.approx(p[0]),
-                             self.empty_dxfgeom.approx(p[1]))
-                    end = (self.empty_dxfgeom.approx(p_next[0]), 
-                            self.empty_dxfgeom.approx(p_next[1]))
+                    start = (approx(p[0], tol=tol),
+                             approx(p[1], tol=tol))
+                    end = (approx(p_next[0], tol=tol), 
+                            approx(p_next[1], tol=tol))
                     self.check_verticies((start, end), self.empty_dxfgeom, e)
 
     def test_add_entities(self):
