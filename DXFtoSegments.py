@@ -630,6 +630,40 @@ class DXFGeometry():
                 if len(self.segments) == initial_len:
                     self.vprint('\tSegment already exists... skipped')
 
+    def cats2d_convert(self):
+        '''
+        Converts the data to a form that can be used in creating a Cats2D mesh.
+        Bulge information is also passed but
+
+        RETURNS:
+        v_coords (list)     --  List of vertex coordinates where each coordinate
+                                is given by a tuple.
+        edges (list)        --  A list of tuples where each tuple contains two
+                                indicies identifying which verticies in v_coords
+                                make up the edge
+        bulges (list)       --  If any edges have bulges, the bulge information
+                                is saved and indexed to the edges in the form
+                                (edge_index, (bulge_info)).
+        '''
+        # First create the v_coords list
+        v_coords = list(self.verts.coordinates)
+        # Now create a dictionary to associate coordinates with an index
+        v_dict = dict(zip(v_coords, range(len(v_coords))))
+        # Convert segments to edges by looping and converting vertex coordinates
+        # to vertex indicies
+        edges = []
+        bulges = []
+        for seg in self.segments:
+            start_vert = v_dict[seg[0][0]]
+            end_vert = v_dict[seg[0][1]]
+            edges.append((start_vert, end_vert))
+            # If the segment is a bulge, save the information in bulges
+            if seg[1]:
+                i = len(edges) - 1 #Find edge index
+                bulges.append((i, seg[1]))
+        # Now return information
+        return v_coords, edges, bulges
+
     def rem_reversed(self):
         '''
         Looks at the current set of segments and removes repeat segments that
@@ -707,16 +741,16 @@ class DXFGeometry():
             return (x_vals, y_vals)
 
         # Set up the plot space
-        fig1, ax1 = plt.subplots()
+        self.fig, self.ax = plt.subplots()
 
         # Plot the lines and arcs
         for seg in self.segments:
             x, y = seg_plot(seg)
-            ax1.plot(x,y, 'b')
+            self.ax.plot(x,y, 'b')
 
         # Plot vertex locations
         x_coords, y_coords = zip(*self.verts.coordinates)
-        ax1.plot(x_coords, y_coords, 'ks')
+        self.ax.plot(x_coords, y_coords, 'ks')
 
         # Create the plot
         plt.axis('scaled')
