@@ -1,25 +1,11 @@
 #!/usr/bin/python
-
 '''
 Code Written by Jeff Peterson (2016)
-Takes a DXF file and converts it into segments (which can be arcs or lines) and
-vertexes. Currently the code does nothing with circles. 
 
-Requirements:
-- Python 2.7x
-- dxfgrabber 0.7.5
-- matplotlib (if plotting)
-- DXFTestSuite.py (if using this for testing)
-- DXFTests directory of DXF test files
-
-Usage:
-This script can either be used by importing its classes and using them in a
-separate script or by running this script directly. The script takes input from
-the command line and the usage for which can be found by running this script
-with the '-h' flag afterwards specificaly, './DXFtoSegments.py -h'
-
-Typing help(DXFtoSegments) in the interpreter will give you information about
-the classes and functions in this module and how they're used.
+The DXFGeometry object in this file is the primary class. It can be used to read
+a DXF file and then convert the information into a form that can then be used
+in the construction of a computational mesh. This module should be imported into
+another script and the classes used there.
 
 DEVELOPMENT NOTES:
 - In the future it may be advantageous to add segments in batches rather than
@@ -33,100 +19,12 @@ import dxfgrabber
 import argparse
 import re
 from numbers import Number
-if __name__=='__main__':
-    import DXFTestSuite
 import unittest
 import math
+import numpy as np
 from matplotlib import pyplot as plt
-
-def angle_convert(angle, deg=False):
-    '''Converts an angle from a negative value to a value between 0 and 2*pi and
-    converts to radians if specified'''
-    if deg:
-        angle = angle*2*math.pi/360 # Convert to radians
-    if angle < 0:
-        new_angle = angle + 2*math.pi
-    else:
-        new_angle = angle
-    return new_angle
-
-
-def drange(start, stop, n_steps, use_start=True):
-    '''
-    Generator that creates a decimal range from start to stop using n_steps
-    '''
-    if n_steps <=1 or type(n_steps) != int:
-        raise ValueError('number of steps must be an integer greater than 1')
-    if start == stop:
-        raise ValueError('Start and stop cannot be the same value')
-    incr = (float(stop) - float(start))/(n_steps - 1)
-    for i in range(n_steps):
-        val = start + i*incr
-        if use_start==False and i==0:
-            continue
-        yield val
-
-def tuple2_check(var):
-    '''
-    Checkes whether a variable is a tuple of length 2 containing numbers and
-    converts numbers to floats if needed
-
-    ARGUMENTS:
-    var (tuple)             --  variable to be tested and converted
-
-    RETURNS:
-    tup (tuple)             --  tuple of two floats
-
-    RAISES:
-    TypeError               --  if vertex is not a tuple
-    IndexError              --  if vertex tuple is not length 2
-    ValueError              --  if vertex tuple does not contain numbers
-    '''
-    if type(var) != tuple:
-        raise TypeError('variable must be a tuple')
-    elif len(var) != 2:
-        raise IndexError('tuple must be of length 2')
-    elif not(isinstance(var[0], Number)) or not(isinstance(var[1], Number)):
-        raise ValueError('tuple must only contain numbers')
-    tup = (float(var[0]), float(var[1]))
-    return tup
-
-def tuple_string_check(var):
-    '''
-    Checks whether a given input is a str conversion of a 2-length tuple and
-    then ensures that the numbers in the tuple are printed like floats. If a 
-    tuple is given instead of a string, it will convert the tuple to the 
-    correct string format.
-
-    ARGUMENTS:
-    var (str)               --  variable to be tested
-
-    RETURNS:
-    str_tup (str)           --  properly formatted string of tuple
-
-    RAISES:
-    TypeError               --  if var is not a string or tuple
-    ValueError              --  if var is not a length-2 tuple that contained
-                                numbers
-    '''
-    if type(var) == tuple:
-        var = str((float(var[0]), float(var[1])))
-    elif type(var) != str:
-        raise TypeError('variable must be a string conversion of a tuple of two numbers')
-    
-    # Compile regular expression and check whether tuple is length 2 containing
-    # numbers
-    tuple_check = re.compile('[(]([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*), ([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*)[)]')
-    tuple_match = tuple_check.match(var)
-    if tuple_match:
-        tuple_float = (float(tuple_match.groups()[0]), float(tuple_match.groups()[1]))
-    else:
-        raise ValueError('tuple converted to string must have been length 2 and had only numbers')
-    
-    # Return the new string that is a tuple of two floats
-    str_tup = str(tuple_float)
-    return str_tup
-
+from HelperFunctions import angle360, anglespace, approx, bulge_to_arc, \
+                            ccw_angle_diff, tuple2_check, tuple_string_check
 
 class Vertex():
     '''
@@ -169,7 +67,8 @@ class Vertex():
         self.y = coords[1]
         self.id = str(coords)
         self.connected = set([])
-        self.tuple_check = re.compile('[(]([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*), ([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*)[)]')
+        se_pattern = '[-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*'
+        self.tuple_check = re.compile('[(]({0}), ({0})[)]'.format(se_pattern))
 
     def con(self, vertexID):
         '''
@@ -188,7 +87,9 @@ class Vertex():
         except TypeError:
             raise('vertex to be connected must be a string')
         except ValueError:
-            msg = 'Cannot connect vertex \'{}\' because is not the correct form. Vertex IDs must be str() applied to a two-element tuple containing numbers'.format(vertexID)
+            msg = '''Cannot connect vertex \'{}\' because is not the correct
+            form. Vertex IDs must be str() applied to a two-element tuple
+            containing numbers'''.format(vertexID)
             raise TypeError(msg)
         if vertexID == self.id:
             raise RuntimeError('Cannot connect a vertex to itself')
@@ -213,7 +114,9 @@ class Vertex():
         except TypeError:
             raise('vertex to be connected must be a string')
         except ValueError:
-            msg = 'Cannot disconnect vertex \'{}\' because is not the correct form. Vertex IDs must be str() applied to a two-element tuple containing numbers'.format(vertexID)
+            msg = '''Cannot disconnect vertex \'{}\' because is not the correct
+            form. Vertex IDs must be str() applied to a two-element tuple
+            containing numbers'''.format(vertexID)
             raise TypeError(msg)
 
         # Raise error if not connected
@@ -326,7 +229,8 @@ class VertexList():
         try:
             self.verticies[vertex2].discon(vertex1)
         except KeyError:
-            raise RuntimeError('Vertex connection not symmetric: {} does not contain connection info for {}'.format(vertex2, vertex1))
+            raise RuntimeError('''Vertex connection not symmetric: {} does not
+                    contain connection info for {}'''.format(vertex2, vertex1))
 
     def remove(self, v_coords):
         '''
@@ -406,6 +310,8 @@ class DXFGeometry():
     segments (set)              --  Set of segments defined by two points
                                     along with additional information in the
                                     case of arcs/bulges.
+    tol (float)                 --  The tolerance to which all positions are
+                                    specified (default 1.0e-08)
 
     Segments data structure:
     The structure of the segments variable is set of length-2 tuples. Each tuple
@@ -423,23 +329,52 @@ class DXFGeometry():
     A straight line will contain an empty tuple for the bulge information
     '''
 
-    def __init__(self, dxf_file, testing=False, verbose=False):
+    def __init__(self, dxf_file, testing=False, verbose=False, tol=1.0e-08):
         '''
         Reads the DXF file and any arguments that may have been passed to the
         class. This could include command-line arguments.
 
         ARGUMENTS:
         dxf_file (str)          --  Name of DXF file to be loaded
+
+        OPTIONAL ARGUMENTS:
+        testing (bool)          --  If testing mode is activated, entities are
+                                    NOT added from the DXF file.
+                                    (Default = False)
+        verbose (bool)          --  When vebose is True, every entity added
+                                    will have information about it printed.
+                                    (Default = False)
+        tol (float)             --  The tolerance to which all positions will be
+                                    rounded. This is important when points 
+                                    overlap in the DXF file but differ slightly
+                                    in their coordinates. Without the tolerance,
+                                    these would be treated as separate points
+                                    when the user might intend that they are the
+                                    same point. This often happens with repeated
+                                    patterns.
+                                    (Default = 1.0e-08)
         '''
-        self.dxf = dxfgrabber.readfile(dxf_file)
         self.dxf_name = dxf_file
         self.verts = VertexList()
         self.segments = set([])
         self.verbose = verbose
+        self.tol = tol #Rounds coordinates to this tolerance
+        self.testing = testing
+        no_file = False
+
+        # If testing, don't worry about file name
+        try:
+            self.dxf = dxfgrabber.readfile(dxf_file)
+        except IOError:
+            if not self.testing:
+                raise
+            else:
+                no_file = True
 
         # Add all entities in dxf_file to segments and verts if not testing
-        if not testing:
+        if not no_file:
             self.add_entities(self.dxf.entities)
+            self.rem_reversed()
 
     def vprint(self, *args):
         '''Printing function that is responsive to self.verbose'''
@@ -522,8 +457,8 @@ class DXFGeometry():
             raise TypeError(msg)
 
         # Find end-points
-        start = (entity.start[0], entity.start[1])
-        end = (entity.end[0], entity.end[1])
+        start = (approx(entity.start[0], tol=self.tol), approx(entity.start[1], tol=self.tol))
+        end = (approx(entity.end[0], tol=self.tol), approx(entity.end[1], tol=self.tol))
 
         # Add verticies and connect them
         self.verts.add(start)
@@ -531,9 +466,12 @@ class DXFGeometry():
         self.verts.connect(start, end)
 
         # Collect segment data and add to set
+        initial_len = len(self.segments)
         seg = ((start, end),())
         self.vprint('adding line {}'.format(seg[0]))
         self.segments.add(seg)
+        if len(self.segments) == initial_len:
+            self.vprint('\tSegment already exists... skipped')
 
     def add_arc(self, entity):
         '''
@@ -553,17 +491,18 @@ class DXFGeometry():
             raise TypeError(msg)
 
         # Extract information (again ignoring z-coordinate)
-        start_angle = math.radians(entity.startangle)
-        end_angle = math.radians(entity.endangle)
-        center = (entity.center[0], entity.center[1])
-        radius = entity.radius
+        start_angle = np.radians(entity.startangle)
+        end_angle = np.radians(entity.endangle)
+        center = (approx(entity.center[0], tol=self.tol), approx(entity.center[1], tol=self.tol))
+        radius = approx(entity.radius, tol=1.0e-12)
 
         # Calculate bulge and start/stop information
-        bulge = math.tan((end_angle - start_angle)/4)
-        start = (radius*math.cos(start_angle) + center[0], 
-                 radius*math.sin(start_angle) + center[1])
-        end = (radius*math.cos(end_angle) + center[0], 
-               radius*math.sin(end_angle) + center[1])
+        theta = ccw_angle_diff(start_angle, end_angle)
+        bulge = np.tan(theta/4)
+        start = (approx(radius*np.cos(start_angle) + center[0], tol=self.tol), 
+                 approx(radius*np.sin(start_angle) + center[1], tol=self.tol))
+        end = (approx(radius*np.cos(end_angle) + center[0], tol=self.tol), 
+               approx(radius*np.sin(end_angle) + center[1], tol=self.tol))
 
         # Add verticies and connect them
         self.verts.add(start)
@@ -571,9 +510,12 @@ class DXFGeometry():
         self.verts.connect(start, end)
 
         # Collect segment data and add to set
+        initial_len = len(self.segments)
         seg = ((start, end), (bulge, start_angle, end_angle, center, radius))
         self.vprint('adding arc {}'.format(seg[0]))
         self.segments.add(seg)
+        if len(self.segments) == initial_len:
+            self.vprint('\tSegment already exists... skipped')
 
     def add_polyline(self, entity):
         '''
@@ -592,10 +534,12 @@ class DXFGeometry():
             msg = 'dxf entitiy passed was not a POLYLINE but a {}'.format(entity.dxftype)
             raise TypeError(msg)
 
+        self.vprint('Breaking up this polyline into segments:\n{}'.format(entity))
         # Loop through the points in the polyline
         for i, point in enumerate(entity.points):
             # Add the current point
-            start = (point[0], point[1])
+            start = (approx(point[0], tol=self.tol), 
+                     approx(point[1], tol=self.tol))
             self.verts.add(start)
             try:
                 # Add the next point if it exists
@@ -607,70 +551,95 @@ class DXFGeometry():
                     # If polyline is closed, connect the last point (the current
                     # point) back to the first point
                     first_point = entity.points[0]
-                    end = (first_point[0], first_point[1])
+                    end = (approx(first_point[0], tol=self.tol), 
+                           approx(first_point[1], tol=self.tol))
                     self.verts.connect(start, end)
                 else:
                     # Otherwise the polyline is open so all segments have been
                     # added already
-                    self.vprint('This polyline is not closed:\n\t {}'.format(entity))
+                    self.vprint('\tThis polyline is not closed!')
                     break
             else:
                 # The next point DOES exist so add it and connect it to the
                 # current point
-                end = (next_point[0], next_point[1])
+                end = (approx(next_point[0], tol=self.tol), 
+                       approx(next_point[1], tol=self.tol))
                 self.verts.add(end)
                 # Connect the two points
+                #print start, end
                 self.verts.connect(start, end)
+
+            # Find number of segments before adding this one
+            initial_len = len(self.segments)
 
             # Check whether there is a bulge in this segment
             if  entity.bulge[i] != 0:
                 # Convert bulge information to arc and store information
                 bulge = entity.bulge[i]
                 # Distance between points
-                d = math.sqrt((start[0] - end[0])**2 + (start[1] - start[1])**2)
+                d = np.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
                 # Angle between points from center
-                theta = angle_convert(4*math.atan(bulge))
+                theta = 4*np.arctan(bulge)
                 # Radius of circle making arc
-                radius = d/2/math.sin(abs(theta)/2)
+                radius = approx(d/2/np.sin(abs(theta)/2), tol=1e-12)
                 # Find angle of segment relative to x axis
-                alpha = math.atan2(end[1]-start[1], end[0]-start[0])
-                # Find angle between segment and radius and make the same sign
-                # as theta
-                beta = (math.pi/2 - abs(theta)/2)*theta/abs(theta)
-                # Angle to radius vector from x-axis is then the sum of alpha
-                # and beta
-                gamma = alpha + beta
+                alpha = np.arctan2(end[1]-start[1], end[0]-start[0])
+                # beta = (np.pi/2 - abs(theta)/2)*(np.pi - abs(theta))/abs(np.pi - abs(theta))
+                # # Angle to radius vector from x-axis is then the sum of alpha
+                # # and beta
+                # gamma = alpha + beta
+                if bulge > 0:
+                    # Find angle between segment and radius. Beta is negative if
+                    # theta is greater than pi
+                    beta = np.pi/2 - theta/2
+                    # Angle to radius vector from x-axis is then the SUM of
+                    # alpha and beta
+                    gamma = alpha + beta
+                else:
+                    # Find angle between segment and radius. Beta is negative if
+                    # theta is greater than pi
+                    beta = np.pi/2 + theta/2
+                    # Angle to radius vector from x-axis is then the DIFFERENCE
+                    # between alpha and beta
+                    gamma = alpha - beta
                 # Gamma angle and radius describe the vector pointing from the
                 # start point to the center
-                center = (radius*math.cos(gamma)+start[0],
-                          radius*math.sin(gamma)+start[1])
-                # Now compute start and stop angles relative to horizontal
-                start_angle = math.atan2(start[1]-center[1], start[0]-center[0])
-                end_angle = math.atan2(end[1]-center[1], end[0]-center[0])
+                center = (approx(radius*np.cos(gamma)+start[0], tol=self.tol),
+                          approx(radius*np.sin(gamma)+start[1], tol=self.tol))
+                # Now compute start and stop angles relative to horizontal in
+                # a counter-clockwise sense
+                start_angle = angle360(np.arctan2(start[1]-center[1], 
+                                                  start[0]-center[0]))
+                end_angle = angle360(np.arctan2(end[1]-center[1],
+                                                end[0]-center[0]))
 
                 # Compile all bulge/arc information and add it to segments
                 seg = ((start, end), (bulge, start_angle, end_angle, center,
                                       radius))
-                self.vprint('adding arc {}'.format(seg[0]))
+                self.vprint('\tadding arc {}'.format(seg[0]))
                 self.segments.add(seg)
+                if len(self.segments) == initial_len:
+                    self.vprint('\tSegment already exists... skipped')
 
             # Segment is a straight line
             else:
                 seg = ((start, end), ())
                 # Add info to segments
-                self.vprint('adding line {}'.format(seg[0]))
+                self.vprint('\tadding line {}'.format(seg[0]))
                 self.segments.add(seg)
+                if len(self.segments) == initial_len:
+                    self.vprint('\tSegment already exists... skipped')
 
     def rem_reversed(self):
         '''
         Looks at the current set of segments and removes repeat segments that
         exist as reversals of currently existing segments. This is accomplished
-        by reversing every segment (inclduing recalculating arc/bulge info) and
-        then trying to remove that segment from the segment set.
+        by reversing every segment and then trying to remove the original, non-
+        reversed segment if the reversed segment also exists.
         '''
-
+        # Convert segment set to list
         pruned_segs = self.segments.copy()
-        for seg in self.segments.copy():
+        for seg in self.segments:
             # First reverse the segment
             rev_seg_coords = (seg[0][1], seg[0][0])
             if seg[1] == ():
@@ -687,70 +656,79 @@ class DXFGeometry():
                     rev_radius)
             # Create the reversed segment
             rev_seg = (rev_seg_coords, rev_seg_info)
-            # Now determine if this segment already exists in the set
-            try:
-                pruned_segs.remove(rev_seg)
-            except KeyError:
-                continue #It's not in the segment list so move on
+            # Check if the reversed segment is in the list of segments
+            if rev_seg in pruned_segs:
+                # Remove the non-reversed segment
+                pruned_segs.remove(seg)
+            else:
+                continue
         self.segments = pruned_segs
+        if not self.testing:
+            print 'Reversed segments have been removed from {}'.format(self.dxf_name)
         return pruned_segs
 
     def display(self):
         '''
-        Plots the current geometry
+        Plots the current geometry but does not display it. In order to display
+        the plot, a plt.show() call must be made after the display() method is
+        used with plt of course being the matplotlib.pyplot module.
         '''
-        pass
+        def arc_points(bulge, center, radius, startangle, endangle):
+            '''
+            Creates a series of points that form an arc. Outputs series of x
+            points and y points that form arc. Correctly accounts for the fact
+            that the start angle could be larger than the end angle.
+            '''
+            # If the bulge is less than 0, arc must be defined clockwise
+            if bulge > 0:
+                angles = anglespace(startangle, endangle, num=50)
+            else:
+                angles = anglespace(endangle, startangle, num=50)
+            x_vals = radius*np.cos(angles) + center[0]
+            y_vals = radius*np.sin(angles) + center[1]
+            return (x_vals, y_vals)
 
+        def seg_plot(segment):
+            '''
+            Creates information for a plot from a segment
+            '''
+            # If segment is a straight line, this will evaluate true
+            if not segment[1]:
+                x_vals, y_vals = zip(*segment[0])
+            # Otherwise extract the arc information and generate x,y points
+            else:
+                bulge = segment[1][0]
+                startangle = segment[1][1]
+                endangle = segment[1][2]
+                center = segment[1][3]
+                radius = segment[1][4]
+                x_vals, y_vals = arc_points(bulge, center, radius, startangle,
+                                            endangle)
+            return (x_vals, y_vals)
 
-def test_suite(verbose=False, dxf_test=False):
-    '''Runs the test suite'''
-    if verbose:
-        verbosity = 2
-    else:
-        verbosity = 1
-    suites = []
-    suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertex))
-    suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertexList))
-    if dxf_test:
-        suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestDXFGeometry))
-        dxf = DXFGeometry('./DXFTests/DXFTest2.dxf')
-        dxf.display()
-    alltests = unittest.TestSuite(suites)
-    unittest.TextTestRunner(verbosity=verbosity).run(alltests)
+        # Set up the plot space
+        fig1, ax1 = plt.subplots()
+
+        # Plot the lines and arcs
+        for seg in self.segments:
+            x, y = seg_plot(seg)
+            ax1.plot(x,y, 'b')
+
+        # Plot vertex locations
+        x_coords, y_coords = zip(*self.verts.coordinates)
+        ax1.plot(x_coords, y_coords, 'ks')
+
+        # Create the plot
+        plt.axis('scaled')
+        plt.draw() # Plot must be shown to be visible so after calling the
+
+        print 'Geometry for {} is queued for display...'.format(self.dxf_name)
 
 def main():
-    # NOTE: Argument parsing requires Python 2.7x or higher
-    # Parses command-line input arguemtns
-    help_string = '''Reads a DXF file and then converts it to a suitable form
-                     for use in creating computational meshes for CrysMAS and 
-                     Cats2D'''
-    parser = argparse.ArgumentParser(description=help_string)
-    # Specify the DXF file (required)
-    help_string = '''Specify the DXF file to convert or specify \'test\' to run
-                     the test suite'''
-    parser.add_argument('dxf_file', action='store', type=str, 
-                        metavar='dxf_file or \'test\'', help=help_string)
-    # Create verbose mode
-    parser.add_argument('-v', '--verbose', action='store_true')
-    # Specify whether information should be output to CrysMAS and optionally specify a new filename
-    help_string = '''Turn the DXF file into a CrysMAS .pcs mesh file. A file 
-                     name for the .pcs file can optionally be specified'''
-    parser.add_argument('-c', '--crysmas', nargs='?', metavar='file',
-                        const=True, help=help_string)
-    # Skip DXF tests if option is passed
-    help_string = '''Skips the DXF tests if testing mode is activated'''
-    parser.add_argument('-n', '--nodxf', action='store_true', help=help_string)
-
-    args = parser.parse_args()
-
-    # Specify testing mode from the command line
-    if args.dxf_file == 'test':
-        testing = True
-        test_suite(verbose=args.verbose, dxf_test=not(args.nodxf))
-    # Otherwise create a DXF geometry object
-    else:
-        dxf = DXFGeometry(args.dxf_file, verbose=args.verbose)
-
+    print '''This file contains classes that are used to create a DXFGeometry
+    object from a DXF file for then creating a computational mesh in either
+    CrysMAS or Cats2D. Please run the MeshGenerator.py file for usage
+    information'''
 
 # Check whether the script is being excuted by itself
 if __name__=="__main__":
