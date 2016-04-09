@@ -29,7 +29,7 @@ import argparse
 from matplotlib import pyplot as plt
 import sys
 
-def test_suite(verbose=False, dxf_test=False):
+def test_suite(verbose=False, dxf_test=True):
     '''Runs the test suite'''
     if verbose:
         verbosity = 2
@@ -41,6 +41,7 @@ def test_suite(verbose=False, dxf_test=False):
     if dxf_test:
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestDXFGeometry))
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.DXFTestCases))
+        suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.DXFtoCats2DTests))
         dxf1 = DXFGeometry('./DXFTests/DXFTest1.dxf', testing=True)
         dxf1.display()
         dxf2 = DXFGeometry('./DXFTests/DXFTest2.dxf', testing=True)

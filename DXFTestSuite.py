@@ -342,6 +342,18 @@ class DXFTestCases(unittest.TestCase):
             msg = '''DXFTest{} Geometry does not match standard geometry'''.format(i)
             self.assertTrue(check, msg)
 
+class DXFtoCats2DTests(unittest.TestCase):
+    '''Test cases for converting a DXF geometry into a Cats2D mesh'''
+    def setUp(self):
+        self.dxf4 = DXFGeometry('./DXFTests/DXFTest4.dxf', testing=True)
+
+    def test_DXFGeomtoCats(self):
+        '''Convert DXF geometry for creating Cats2D mesh'''
+        standard = open('./DXFTests/DXFTest4_cats2d.pick', 'rb')
+        pick_info = pickle.load(standard)
+        check = self.dxf4.cats2d_convert() == pick_info
+        msg = 'Cats2D information for DXFTest4 did not match the saved standard'
+        self.assertTrue(check, msg)
 
 def main():
     print '''Please run the test suite from the MeshGenerator.py file by using
