@@ -12,6 +12,7 @@ import math
 import numpy as np
 from HelperFunctions import bulge_to_arc, approx, ccw_angle_diff
 import pickle
+import filecmp
 
 class TestVertex(unittest.TestCase):
     '''
@@ -342,6 +343,38 @@ class DXFTestCases(unittest.TestCase):
             msg = '''DXFTest{} Geometry does not match standard geometry'''.format(i)
             self.assertTrue(check, msg)
 
+class DXFtoCats2DTests(unittest.TestCase):
+    '''Test cases for converting a DXF geometry into a Cats2D mesh'''
+    def setUp(self):
+        self.dxf4 = DXFGeometry('./DXFTests/DXFTest4.dxf', testing=True)
+
+    def tearDown(self):
+        self.dxf4 = None
+
+    def test_DXFGeomtoCats(self):
+        '''Convert DXF geometry for creating Cats2D mesh'''
+        standard = open('./DXFTests/DXFTest4_cats2d.pick', 'rb')
+        pick_info = pickle.load(standard)
+        check = self.dxf4.cats2d_convert() == pick_info
+        msg = 'Cats2D information for DXFTest4 did not match the saved standard'
+        self.assertTrue(check, msg)
+
+class DXFtoCrysMASTests(unittest.TestCase):
+    '''Test cases for converting a DXF geometry into a CrysMAS .pcs file'''
+    def setUp(self):
+        self.dxf = DXFGeometry('./DXFTests/DXFTest_Clamshellv5.dxf')
+
+    def tearDown(self):
+        self.dxf = None
+
+    def test_DXFGeomtoCrys(self):
+        '''Conver DXF geometry to CrysMAS .pcs file'''
+        standard = './DXFTests/DXFTest_Clamshellv5.pcs.const'
+        self.dxf.output_to_crysmas(f_name='Testing')
+        test_file = './DXFTests/Testing.pcs'
+        check = filecmp.cmp(test_file, standard)
+        msg = 'File information differs between {} and {}'.format(standard, test_file)
+        self.assertTrue(check, msg)
 
 def main():
     print '''Please run the test suite from the MeshGenerator.py file by using
