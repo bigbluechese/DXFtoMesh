@@ -12,7 +12,8 @@ Requirements:
 - HelperFunctions.py
 
 Requirements for Testing:
-- DXFTestSuite.py (if using this for testing)
+- DXFTestSuite.py
+- CreateStandards.py
 - DXFTests directory of DXF test files
 
 Usage:
@@ -42,6 +43,7 @@ def test_suite(verbose=False, dxf_test=True):
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestDXFGeometry))
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.DXFTestCases))
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.DXFtoCats2DTests))
+        suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.DXFtoCrysMASTests))
         dxf1 = DXFGeometry('./DXFTests/DXFTest1.dxf', testing=True)
         dxf1.display()
         dxf2 = DXFGeometry('./DXFTests/DXFTest2.dxf', testing=True)
@@ -58,28 +60,33 @@ def test_suite(verbose=False, dxf_test=True):
 
 # NOTE: Argument parsing requires Python 2.7x or higher
 # Parses command-line input arguemtns
-help_string = '''Reads a DXF file and then converts it to a suitable form
-                 for use in creating computational meshes for CrysMAS and 
-                 Cats2D'''
+help_string = '''Reads a DXF file and then converts it to a suitable form for
+                 use in creating computational meshes for CrysMAS and Cats2D'''
 parser = argparse.ArgumentParser(description=help_string)
 # Specify the DXF file (required)
-help_string = '''Specify the DXF file to convert or specify \'test\' to run
-                 the test suite'''
+help_string = '''Specify the DXF file to convert or specify \'test\' to run the
+                 test suite'''
 parser.add_argument('dxf_file', action='store', type=str, 
                     metavar='dxf_file or \'test\'', help=help_string)
 # Create verbose mode
 parser.add_argument('-v', '--verbose', action='store_true')
-# Specify whether information should be output to CrysMAS and optionally specify a new filename
-help_string = '''Turn the DXF file into a CrysMAS .pcs mesh file. A file 
-                 name for the .pcs file can optionally be specified'''
-parser.add_argument('-c', '--crysmas', nargs='?', metavar='file',
+# Specify whether information should be output to CrysMAS and optionally specify
+# a new filename
+help_string = '''Turn the DXF file into a CrysMAS .pcs mesh file. A file name
+                 for the .pcs file can optionally be specified'''
+parser.add_argument('--crysmas', nargs='?', metavar='file',
                     const=True, help=help_string)
+# Specify the units of the DXF file
+help_string = '''Specify the units for the DXF file'''
+parser.add_argument('--units', action='store', default='mm', help=help_string)
+
 # Skip DXF tests if option is passed
 help_string = '''Skips the DXF tests if testing mode is activated'''
 parser.add_argument('--nodxf', action='store_true', help=help_string)
 
 # Create new standard DXF files for tests
-help_string = '''Creates new standards for tests to compare to when in test mode. Use with caution'''
+help_string = '''Creates new standards for tests to compare to when in test
+                mode. Use with caution'''
 parser.add_argument('--newstandard', action='store_true', help=help_string)
 
 args = parser.parse_args()
@@ -97,8 +104,12 @@ if args.dxf_file == 'test':
 else: #Otherwise create a DXF geometry object
     dxf = DXFGeometry(args.dxf_file, verbose=args.verbose)
 
+# Create a CrysMAS file
 if args.crysmas:
-    print 'Make a crysmas geometry'
     if args.crysmas != True:
-        fname = args.crysmas
+        crys_file = args.crysmas
+    else:
+        crys_file = None
+    dxf.output_to_crysmas(dxf_units=args.units, f_name=crys_file)
+
     

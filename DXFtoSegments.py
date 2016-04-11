@@ -19,9 +19,9 @@ import dxfgrabber
 import argparse
 import re
 from numbers import Number
-import unittest
 import math
 import numpy as np
+import os
 from matplotlib import pyplot as plt
 from HelperFunctions import angle360, anglespace, approx, bulge_to_arc, \
                             ccw_angle_diff, tuple2_check, tuple_string_check
@@ -354,7 +354,7 @@ class DXFGeometry():
                                     patterns.
                                     (Default = 1.0e-08)
         '''
-        self.dxf_name = dxf_file
+        self.dxf_path = dxf_file
         self.verts = VertexList()
         self.segments = set([])
         self.verbose = verbose
@@ -664,7 +664,7 @@ class DXFGeometry():
                 continue
         self.segments = pruned_segs
         if not self.testing:
-            print 'Reversed segments have been removed from {}'.format(self.dxf_name)
+            print 'Reversed segments have been removed from {}'.format(self.dxf_path)
         return pruned_segs
 
     def cats2d_convert(self):
@@ -701,10 +701,90 @@ class DXFGeometry():
         # Now return information
         return v_coords, edges, bulges
 
-    def output_to_crysmas(self):
+    def output_to_crysmas(self, dxf_units='mm', f_name=None):
         '''
-        Outputs the current geometry to a CrysMAS mesh file
+        Outputs the current geometry to a CrysMAS mesh file. Will convert from
+        the dxf_units into meters by the appropriate conversion factor. Bulges
+        are converted into straight lines.
+
+        NOTE: There is a chance that CrysMAS will have issues with Windows
+        newline characters. If this is the case, run this code on a Unix
+        platform to create the .pcs file.
+
+        OPTIONAL ARGUMENTS:
+        dxf_units (str)     --  Specify the units of the DXF file as either
+                                'mm', 'cm', 'm', 'in' or 'ft'. The code will
+                                then convert the dimensions into meters for
+                                CrysMAS (Default='mm').
+        f_name (str)        --  Output .pcs file name. If none is specified,
+                                the name of the DXF file is used for the .pcs
+                                file as well.
+
+        RAISES:
+        TypeError           --  if units are given that aren't any of the above
         '''
+        # Create scaling factor for units (converting to m)
+        units = {'m':1, 'cm':0.01, 'mm':0.001, 'in':2.54/100., 'ft':12*2.54/100}
+        try:
+            scale_factor = units[dxf_units]
+        except IndexError:
+            msg = 'dxf units must be specified in {}'.format(', '.join(units.keys()))
+            raise TypeError(msg)
+
+        # Extract path information
+        work_dir, dxf_name = os.path.split(os.path.splitext(self.dxf_path)[0])
+
+        # Open the CrysMAS .pcs file
+        if f_name:
+            crys_path = os.path.join(work_dir, f_name+'.pcs')
+            crys_file= open(crys_path, 'w')
+        else:
+            crys_path = os.path.join(work_dir, dxf_name+'.pcs')
+            crys_file= open(crys_path, 'w')
+
+        # Find extra information for CrysMAS
+        x_vals, y_vals = zip(*self.verts.coordinates)
+        x_max = max(x_vals)*scale_factor
+        x_min = min(x_vals)*scale_factor
+        y_max = max(y_vals)*scale_factor
+        y_min = min(y_vals)*scale_factor
+        num_points = len(self.verts.coordinates)
+        num_lines = len(self.segments)
+
+        # Write the max/min header
+        line = '{} {} {} {}\n'.format(x_min, x_max, y_min, y_max)
+        crys_file.write(line)
+
+        # Next write the number of points
+        line = '{} points\n'.format(num_points)
+        crys_file.write(line)
+
+        # Create dictionary for matching vertex coordinates to indicies
+        v_dict = {}
+
+        # Loop through verticies, assign indicies, and write to file
+        for i, v in enumerate(self.verts.coordinates):
+            v_scaled = (v[0]*scale_factor, v[1]*scale_factor)
+            v_dict[v_scaled] = i+1 #Index is CrysMAS (i.e. starts at 1)
+            line = '{} {} {}\n'.format(i+1, v_scaled[0], v_scaled[1])
+            crys_file.write(line)
+
+        # Write the number of lines
+        line = '{} lines\n'.format(num_lines)
+        crys_file.write(line)
+
+        # Loop through segments, assign verticies, and look up verticies
+        for i, seg in enumerate(self.segments):
+            start_coords = (seg[0][0][0]*scale_factor, seg[0][0][1]*scale_factor)
+            end_coords = (seg[0][1][0]*scale_factor, seg[0][1][1]*scale_factor)
+            start_vert = v_dict[start_coords]
+            end_vert = v_dict[end_coords]
+            line = '{} {} {} 0\n'.format(i, start_vert, end_vert)
+            crys_file.write(line)
+
+        # Close the file
+        crys_file.close()
+
 
     def display(self):
         '''
@@ -761,7 +841,7 @@ class DXFGeometry():
         plt.axis('scaled')
         plt.draw() # Plot must be shown to be visible so after calling the
 
-        print 'Geometry for {} is queued for display...'.format(self.dxf_name)
+        print 'Geometry for {} is queued for display...'.format(self.dxf_path)
 
 def main():
     print '''This file contains classes that are used to create a DXFGeometry
