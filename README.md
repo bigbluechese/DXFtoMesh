@@ -34,3 +34,5 @@ dxf_geometry = DXFtoSegments.DXFGeometry(file_name)
 
 will create a DXFGeometry object which can then output to CrysMAS by invoking
 the output_to_crysmas() method.
+
+Adding a new line!
