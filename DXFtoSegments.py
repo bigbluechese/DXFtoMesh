@@ -785,6 +785,8 @@ class DXFGeometry():
         # Close the file
         crys_file.close()
 
+        print 'Saving to CrysMAS geometry {}...'.format(crys_path)
+
 
     def display(self):
         '''
