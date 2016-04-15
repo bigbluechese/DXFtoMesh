@@ -1,4 +1,10 @@
 
 *.pyc
 
+<<<<<<< Updated upstream
 *.pcs
+=======
+*.dwl
+
+*.dwl2
+>>>>>>> Stashed changes

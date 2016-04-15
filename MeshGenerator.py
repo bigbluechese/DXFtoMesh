@@ -101,7 +101,8 @@ if args.dxf_file == 'test':
         test_suite(verbose=args.verbose, dxf_test=not(args.nodxf))
     # Exit immediately after testing is complete
     sys.exit()
-else: #Otherwise create a DXF geometry object
+# Otherwise create a DXF geometry object
+else: 
     dxf = DXFGeometry(args.dxf_file, verbose=args.verbose)
 
 # Create a CrysMAS file
