@@ -355,7 +355,7 @@ class DXFtoCats2DTests(unittest.TestCase):
         '''Convert DXF geometry for creating Cats2D mesh'''
         standard = open('./DXFTests/DXFTest4_cats2d.pick', 'rb')
         pick_info = pickle.load(standard)
-        check = self.dxf4.cats2d_convert() == pick_info
+        check = self.dxf4.cats2d_convert(invert_coords=False) == pick_info
         msg = 'Cats2D information for DXFTest4 did not match the saved standard'
         self.assertTrue(check, msg)
 
