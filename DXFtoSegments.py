@@ -667,10 +667,21 @@ class DXFGeometry():
             print 'Reversed segments have been removed from {}'.format(self.dxf_path)
         return pruned_segs
 
-    def cats2d_convert(self):
+    def cats2d_convert(self, invert_coords=True, len_scale=None):
         '''
         Converts the data to a form that can be used in creating a Cats2D mesh.
         Bulge information is also passed but
+
+        OPTIONAL ARGUMENTS:
+        invert_coords (bool)--  When evalatues to True, the coordinates for
+                                every point will be swapped. This facilitates
+                                the fact that Cats2D operates in a geometry
+                                where y maps to r and x maps to z when a CAD
+                                drawing will likely map the opposite.
+                                (Default = True)
+        len_scale (float)   --  If specified, all coordinates in the DXF file
+                                will be divided by this value. It is up to the
+                                user to ensure that the correct units are used.
 
         RETURNS:
         v_coords (list)     --  List of vertex coordinates where each coordinate
@@ -686,6 +697,7 @@ class DXFGeometry():
         v_coords = list(self.verts.coordinates)
         # Now create a dictionary to associate coordinates with an index
         v_dict = dict(zip(v_coords, range(len(v_coords))))
+
         # Convert segments to edges by looping and converting vertex coordinates
         # to vertex indicies
         edges = []
@@ -698,6 +710,18 @@ class DXFGeometry():
             if seg[1]:
                 i = len(edges) - 1 #Find edge index
                 bulges.append((i, seg[1]))
+
+        # Swap the x and y coordinates by default
+        if invert_coords:
+            x_coords, y_coords = zip(*v_coords)
+            v_coords = zip(y_coords, x_coords)
+            self.vprint('Swapping x and y coordinates for export to Cats2D')
+
+        # Non-dimensionalize the coordiantes if needed
+        if len_scale:
+            len_scale = float(len_scale)
+            v_coords = [(x/len_scale, y/len_scale) for x, y in v_coords]
+
         # Now return information
         return v_coords, edges, bulges
 
