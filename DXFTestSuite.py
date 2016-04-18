@@ -368,7 +368,7 @@ class DXFtoCrysMASTests(unittest.TestCase):
         self.dxf = None
 
     def test_DXFGeomtoCrys(self):
-        '''Conver DXF geometry to CrysMAS .pcs file'''
+        '''Convert DXF geometry to CrysMAS .pcs file'''
         standard = './DXFTests/DXFTest_Clamshellv5.pcs.const'
         self.dxf.output_to_crysmas(f_name='Testing')
         test_file = './DXFTests/Testing.pcs'
