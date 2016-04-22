@@ -530,7 +530,7 @@ class DXFGeometry():
         TypeError               --  if entitiy.dxftype is not 'POLYLINE'
         '''
         # Check input
-        if entity.dxftype != 'POLYLINE':
+        if entity.dxftype != 'POLYLINE' and entity.dxftype != 'LWPOLYLINE':
             msg = 'dxf entitiy passed was not a POLYLINE but a {}'.format(entity.dxftype)
             raise TypeError(msg)
 
