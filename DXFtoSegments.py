@@ -431,7 +431,7 @@ class DXFGeometry():
                 self.add_line(entity)
             elif entity.dxftype == 'ARC':
                 self.add_arc(entity)
-            elif entity.dxftype == 'POLYLINE':
+            elif entity.dxftype == 'POLYLINE' or entity.dxftype == 'LWPOLYLINE':
                 self.add_polyline(entity)
             elif entity.dxftype == 'CIRCLE':
                 pass
