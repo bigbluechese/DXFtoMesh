@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
 Example for the usage of the DXFGeometry object within python
 '''

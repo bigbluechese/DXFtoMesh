@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''
 Function for creating new test standards for the DXF-specific tests. Create new
 standards with caution as overwriting the correct standard may hide errors that

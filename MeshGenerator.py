@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''
 Code Written by Jeff Peterson and Kerry Wang (2016)
 Takes a DXF file and converts it into segments (which can be arcs or lines) and
@@ -6,7 +6,7 @@ vertexes that can then be converted into a CrysMAS or Cats2D mesh.
 
 Requirements:
 - Python 2.7x
-- dxfgrabber 0.7.5
+- dxfgrabber 0.7.5 (0.8.0 is incompatible)
 - SciPy Stack
 - DXFtoSegments.py
 - HelperFunctions.py
@@ -110,6 +110,10 @@ parser.add_argument('--crysmas', nargs='?', metavar='file',
 help_string = 'Specify the units for the DXF file'
 parser.add_argument('--units', action='store', default='mm', help=help_string)
 
+# Pickle the DXFGeometry object
+help_string = 'Create a pickle file of the DXFGeoemtry object'
+parser.add_argument('--pickle', nargs='?', const=True, help=help_string)
+
 # Skip DXF tests if option is passed
 help_string = '''Skips the DXF tests if testing mode is activated'''
 parser.add_argument('--nodxf', action='store_true', help=help_string)
@@ -145,5 +149,12 @@ if args.crysmas:
     else:
         crys_file = None
     dxf.output_to_crysmas(dxf_units=args.units, f_name=crys_file)
+
+# Create a pickle file
+if args.pickle:
+    if args.pickle != True:
+        dxf.pickle(f_name=args.pickle)
+    else:
+        dxf.pickle()
 
     

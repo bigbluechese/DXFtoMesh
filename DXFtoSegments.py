@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''
 Code Written by Jeff Peterson (2016)
 
@@ -22,6 +22,7 @@ from numbers import Number
 import math
 import numpy as np
 import os
+import pickle
 from matplotlib import pyplot as plt
 from HelperFunctions import angle360, anglespace, approx, bulge_to_arc, \
                             ccw_angle_diff, tuple2_check, tuple_string_check
@@ -67,8 +68,8 @@ class Vertex():
         self.y = coords[1]
         self.id = str(coords)
         self.connected = set([])
-        se_pattern = '[-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*'
-        self.tuple_check = re.compile('[(]({0}), ({0})[)]'.format(se_pattern))
+        # se_pattern = '[-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*'
+        # self.tuple_check = re.compile('[(]({0}), ({0})[)]'.format(se_pattern))
 
     def con(self, vertexID):
         '''
@@ -361,6 +362,9 @@ class DXFGeometry():
         self.tol = tol #Rounds coordinates to this tolerance
         self.testing = testing
         no_file = False
+
+        # Extract path information
+        self.work_dir, self.dxf_name = os.path.split(os.path.splitext(self.dxf_path)[0])
 
         # If testing, don't worry about file name
         try:
@@ -755,16 +759,11 @@ class DXFGeometry():
             msg = 'dxf units must be specified in {}'.format(', '.join(units.keys()))
             raise TypeError(msg)
 
-        # Extract path information
-        work_dir, dxf_name = os.path.split(os.path.splitext(self.dxf_path)[0])
-
         # Open the CrysMAS .pcs file
-        if f_name:
-            crys_path = os.path.join(work_dir, f_name+'.pcs')
-            crys_file= open(crys_path, 'w')
-        else:
-            crys_path = os.path.join(work_dir, dxf_name+'.pcs')
-            crys_file= open(crys_path, 'w')
+        if f_name == None:
+            f_name = self.dxf_name
+        crys_path = os.path.join(self.work_dir, f_name+'.pcs')
+        crys_file = open(crys_path, 'w')
 
         # Find extra information for CrysMAS
         x_vals, y_vals = zip(*self.verts.coordinates)
@@ -868,6 +867,18 @@ class DXFGeometry():
         plt.draw() # Plot must be shown to be visible so after calling the
 
         print 'Geometry for {} is queued for display...'.format(self.dxf_path)
+
+    def pickle(self, f_name=None):
+        '''
+        Outputs the current geometry to a user-specified pickle file
+        '''
+        if f_name == None:
+            f_name = self.dxf_name+'.pickle'
+
+        # Dump the pickle to file
+        fo = open(os.path.join(self.work_dir, f_name), 'wb')
+        pickle.dump(self, fo)
+        fo.close()
 
 def main():
     print '''This file contains classes that are used to create a DXFGeometry
