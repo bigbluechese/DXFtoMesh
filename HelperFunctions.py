@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 '''
 Collection of helper functions used with DXftoSegments module
@@ -210,38 +210,38 @@ def tuple2_check(var):
     tup = (float(var[0]), float(var[1]))
     return tup
 
-def tuple_string_check(var):
-    '''
-    Checks whether a given input is a str conversion of a 2-length tuple and
-    then ensures that the numbers in the tuple are printed like floats. If a 
-    tuple is given instead of a string, it will convert the tuple to the 
-    correct string format.
+# def tuple_string_check(var):
+#     '''
+#     Checks whether a given input is a str conversion of a 2-length tuple and
+#     then ensures that the numbers in the tuple are printed like floats. If a 
+#     tuple is given instead of a string, it will convert the tuple to the 
+#     correct string format.
 
-    ARGUMENTS:
-    var (str)               --  variable to be tested
+#     ARGUMENTS:
+#     var (str)               --  variable to be tested
 
-    RETURNS:
-    str_tup (str)           --  properly formatted string of tuple
+#     RETURNS:
+#     str_tup (str)           --  properly formatted string of tuple
 
-    RAISES:
-    TypeError               --  if var is not a string or tuple
-    ValueError              --  if var is not a length-2 tuple that contained
-                                numbers
-    '''
-    if type(var) == tuple:
-        var = str((float(var[0]), float(var[1])))
-    elif type(var) != str:
-        raise TypeError('variable must be a string conversion of a tuple of two numbers')
+#     RAISES:
+#     TypeError               --  if var is not a string or tuple
+#     ValueError              --  if var is not a length-2 tuple that contained
+#                                 numbers
+#     '''
+#     if type(var) == tuple:
+#         var = str((float(var[0]), float(var[1])))
+#     elif type(var) != str:
+#         raise TypeError('variable must be a string conversion of a tuple of two numbers')
     
-    # Compile regular expression and check whether tuple is length 2 containing
-    # numbers
-    tuple_check = re.compile('[(]([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*), ([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*)[)]')
-    tuple_match = tuple_check.match(var)
-    if tuple_match:
-        tuple_float = (float(tuple_match.groups()[0]), float(tuple_match.groups()[1]))
-    else:
-        raise ValueError('tuple converted to string must have been length 2 and had only numbers')
+#     # Compile regular expression and check whether tuple is length 2 containing
+#     # numbers
+#     tuple_check = re.compile('[(]([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*), ([-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*)[)]')
+#     tuple_match = tuple_check.match(var)
+#     if tuple_match:
+#         tuple_float = (float(tuple_match.groups()[0]), float(tuple_match.groups()[1]))
+#     else:
+#         raise ValueError('tuple converted to string must have been length 2 and had only numbers')
     
-    # Return the new string that is a tuple of two floats
-    str_tup = str(tuple_float)
-    return str_tup
+#     # Return the new string that is a tuple of two floats
+#     str_tup = str(tuple_float)
+#     return str_tup

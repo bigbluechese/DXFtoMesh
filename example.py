@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+'''
+Example for the usage of the DXFGeometry object within python
+'''
 import numpy as np
 import DXFtoSegments
 from matplotlib import pyplot as plt
@@ -16,5 +20,3 @@ dxf3 = dxf_objects[2]
 dxf4 = dxf_objects[3]
 
 clamshell = DXFtoSegments.DXFGeometry('./DXFTests/DXFTest_Clamshellv5.dxf')
-clamshell.output_to_crysmas()
-

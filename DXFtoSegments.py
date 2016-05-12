@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''
 Code Written by Jeff Peterson (2016)
 
@@ -22,9 +22,11 @@ from numbers import Number
 import math
 import numpy as np
 import os
+import pickle
+import pkg_resources
 from matplotlib import pyplot as plt
 from HelperFunctions import angle360, anglespace, approx, bulge_to_arc, \
-                            ccw_angle_diff, tuple2_check, tuple_string_check
+                            ccw_angle_diff, tuple2_check
 
 class Vertex():
     '''
@@ -65,10 +67,8 @@ class Vertex():
 
         self.x = coords[0]
         self.y = coords[1]
-        self.id = str(coords)
+        self.id = coords
         self.connected = set([])
-        se_pattern = '[-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*'
-        self.tuple_check = re.compile('[(]({0}), ({0})[)]'.format(se_pattern))
 
     def con(self, vertexID):
         '''
@@ -78,18 +78,18 @@ class Vertex():
         vertexID (str)      --  vertexID to connect to the current vertex
 
         RAISES:
-        TypeError           --  if vertexID is not of the form str(tuple)
+        TypeError           --  if vertexID is not a tuple
         RuntimeError        --  if vertexID is the same as this vertex's ID
         '''
-        # Check to make sure the ID is a str() of a two-number tuple
+        # Check to make sure the ID is a two-number tuple
         try:
-            vertexID = tuple_string_check(vertexID)
-        except TypeError:
-            raise('vertex to be connected must be a string')
+            vertexID = tuple2_check(vertexID)
+        except (TypeError, IndexError) as e:
+            raise('''vertex to be connected must be a length 2 tuple not 
+                  {}'''.format(vertexID))
         except ValueError:
-            msg = '''Cannot connect vertex \'{}\' because is not the correct
-            form. Vertex IDs must be str() applied to a two-element tuple
-            containing numbers'''.format(vertexID)
+            msg = '''Cannot connect vertex \'{}\' because is does not contain 
+            numbers'''.format(vertexID)
             raise TypeError(msg)
         if vertexID == self.id:
             raise RuntimeError('Cannot connect a vertex to itself')
@@ -106,17 +106,17 @@ class Vertex():
         RAISES:
         KeyError            --  If vertexID is not part of the set of connected
                                 vertecies
-        TypeError           --  If vertexID is not of the form str(tuple)
+        TypeError           --  If vertexID is not a tuple
         '''
-        # Check to make sure the ID is a str() of a two-number tuple
+        # Check to make sure the ID is a two-number tuple
         try:
-            vertexID = tuple_string_check(vertexID)
-        except TypeError:
-            raise('vertex to be connected must be a string')
+            vertexID = tuple2_check(vertexID)
+        except (TypeError, IndexError) as e:
+            raise('''vertex to be connected must be a length 2 tuple not 
+                  {}'''.format(vertexID))
         except ValueError:
-            msg = '''Cannot disconnect vertex \'{}\' because is not the correct
-            form. Vertex IDs must be str() applied to a two-element tuple
-            containing numbers'''.format(vertexID)
+            msg = '''Cannot connect vertex \'{}\' because is does not contain 
+            numbers'''.format(vertexID)
             raise TypeError(msg)
 
         # Raise error if not connected
@@ -141,9 +141,9 @@ class VertexList():
     coordinates (set)       --  A list of all vertex coordinates. Coordinates
                                 are given as tuples.
     verticies (dict)        --  A dictionary of all verticies with keys given by
-                                the str() of their tuple coodinates. Each item
-                                is a vertex class with more specific information
-                                about the vertex.
+                                their tuple coodinates. Each item is a vertex
+                                class with more specific information about the
+                                vertex.
     '''
     def __init__(self):
         self.coordinates = set([]) #set of vertex coordinate tuples
@@ -169,7 +169,7 @@ class VertexList():
         # Check if the vertex was added. If it wasn't, that means it's already
         # in the set so it shouldn't be added
         if new_len > initial_len:
-            self.verticies[str(v_coords)] = Vertex(v_coords)
+            self.verticies[v_coords] = Vertex(v_coords)
 
     def connect(self, vertex1, vertex2):
         '''
@@ -185,8 +185,8 @@ class VertexList():
         KeyError                --  if vertex has not yet been added
         '''
         # Check that input is correct and convert for consistency
-        vertex1 = tuple_string_check(vertex1)
-        vertex2 = tuple_string_check(vertex2)
+        vertex1 = tuple2_check(vertex1)
+        vertex2 = tuple2_check(vertex2)
 
         try:
             self.verticies[vertex1].con(vertex2)
@@ -215,15 +215,14 @@ class VertexList():
         KeyError                --  if vertex has not yet been added
         '''
         # Check that input is correct and convert for consistency
-        vertex1 = tuple_string_check(vertex1)
-        vertex2 = tuple_string_check(vertex2)
+        vertex1 = tuple2_check(vertex1)
+        vertex2 = tuple2_check(vertex2)
 
         # Remove vertex 2 from list of connections for vertex 1
         try:
             self.verticies[vertex1].discon(vertex2)
         except KeyError as inst:
             raise
-            #raise KeyError('{} is not an existing vertex'.format(vertex1))
 
         # Remove vertex 1 from list of connections for vertex 2
         try:
@@ -253,14 +252,14 @@ class VertexList():
             raise KeyError('{} is not an existing vertex'.format(v_coords))
 
         # Now figure out the connectivity
-        connections = self.verticies[str(v_coords)].connected
+        connections = self.verticies[v_coords].connected
 
         # Remove all of the connections between this vertex and others
         for vertexID in connections:
-            self.disconnect(str(v_coords), vertexID)
+            self.disconnect(v_coords, vertexID)
 
         # Now finally delete the vertex in the dict
-        del self.verticies[str(v_coords)]
+        del self.verticies[v_coords]
 
     def move_vertex(self, v_coords1, v_coords2):
         '''
@@ -280,7 +279,7 @@ class VertexList():
         v_coords2 = tuple2_check(v_coords2)
 
         try:
-            connections = self.verticies[str(v_coords1)].connected
+            connections = self.verticies[v_coords1].connected
         except KeyError:
             raise KeyError('{} is not an existing vertex'.v_coords1)
 
@@ -292,7 +291,7 @@ class VertexList():
 
         # Add back the connections
         for vertexID in connections:
-            self.connect(str(v_coords2), vertexID)
+            self.connect(v_coords2, vertexID)
 
 class DXFGeometry():
     '''
@@ -354,6 +353,9 @@ class DXFGeometry():
                                     patterns.
                                     (Default = 1.0e-08)
         '''
+        # Make sure the right dxfgrabber is installed
+        self.dxfgrabber_version_check()
+
         self.dxf_path = dxf_file
         self.verts = VertexList()
         self.segments = set([])
@@ -361,6 +363,9 @@ class DXFGeometry():
         self.tol = tol #Rounds coordinates to this tolerance
         self.testing = testing
         no_file = False
+
+        # Extract path information
+        self.work_dir, self.dxf_name = os.path.split(os.path.splitext(self.dxf_path)[0])
 
         # If testing, don't worry about file name
         try:
@@ -375,6 +380,18 @@ class DXFGeometry():
         if not no_file:
             self.add_entities(self.dxf.entities)
             self.rem_reversed()
+
+    def dxfgrabber_version_check(self):
+        '''
+        Checks if the current DXFgrabber version is acceptable. Currently
+        version 0.8.0 is incompatible.
+        '''
+        version = pkg_resources.get_distribution('dxfgrabber').version
+        if version == '0.8.0':
+            raise ImportError('dxfgrabber version should not be 0.8.0')
+        elif cmp('0.7.5', version) > 0:
+            raise ImportWarning('''dxfgrabber versions later than 0.8.0 have not
+                                been tested... use with caution''')
 
     def vprint(self, *args):
         '''Printing function that is responsive to self.verbose'''
@@ -431,7 +448,7 @@ class DXFGeometry():
                 self.add_line(entity)
             elif entity.dxftype == 'ARC':
                 self.add_arc(entity)
-            elif entity.dxftype == 'POLYLINE':
+            elif entity.dxftype == 'POLYLINE' or entity.dxftype == 'LWPOLYLINE':
                 self.add_polyline(entity)
             elif entity.dxftype == 'CIRCLE':
                 pass
@@ -530,7 +547,7 @@ class DXFGeometry():
         TypeError               --  if entitiy.dxftype is not 'POLYLINE'
         '''
         # Check input
-        if entity.dxftype != 'POLYLINE':
+        if entity.dxftype != 'POLYLINE' and entity.dxftype != 'LWPOLYLINE':
             msg = 'dxf entitiy passed was not a POLYLINE but a {}'.format(entity.dxftype)
             raise TypeError(msg)
 
@@ -755,16 +772,11 @@ class DXFGeometry():
             msg = 'dxf units must be specified in {}'.format(', '.join(units.keys()))
             raise TypeError(msg)
 
-        # Extract path information
-        work_dir, dxf_name = os.path.split(os.path.splitext(self.dxf_path)[0])
-
         # Open the CrysMAS .pcs file
-        if f_name:
-            crys_path = os.path.join(work_dir, f_name+'.pcs')
-            crys_file= open(crys_path, 'w')
-        else:
-            crys_path = os.path.join(work_dir, dxf_name+'.pcs')
-            crys_file= open(crys_path, 'w')
+        if f_name == None:
+            f_name = self.dxf_name
+        crys_path = os.path.join(self.work_dir, f_name+'.pcs')
+        crys_file = open(crys_path, 'w')
 
         # Find extra information for CrysMAS
         x_vals, y_vals = zip(*self.verts.coordinates)
@@ -868,6 +880,18 @@ class DXFGeometry():
         plt.draw() # Plot must be shown to be visible so after calling the
 
         print 'Geometry for {} is queued for display...'.format(self.dxf_path)
+
+    def pickle(self, f_name=None):
+        '''
+        Outputs the current geometry to a user-specified pickle file
+        '''
+        if f_name == None:
+            f_name = self.dxf_name+'.pickle'
+
+        # Dump the pickle to file
+        fo = open(os.path.join(self.work_dir, f_name), 'wb')
+        pickle.dump(self, fo)
+        fo.close()
 
 def main():
     print '''This file contains classes that are used to create a DXFGeometry

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 '''
 Code Written by Jeff Peterson and Kerry Wang (2016)
 Takes a DXF file and converts it into segments (which can be arcs or lines) and
@@ -6,8 +6,8 @@ vertexes that can then be converted into a CrysMAS or Cats2D mesh.
 
 Requirements:
 - Python 2.7x
-- dxfgrabber 0.7.5
-- matplotlib (if plotting)
+- dxfgrabber 0.7.5 (0.8.0 is incompatible)
+- SciPy Stack
 - DXFtoSegments.py
 - HelperFunctions.py
 
@@ -28,7 +28,9 @@ import CreateStandards
 import unittest
 import argparse
 from matplotlib import pyplot as plt
+import os
 import sys
+import tarfile
 
 def test_suite(verbose=False, dxf_test=True):
     '''Runs the test suite'''
@@ -58,27 +60,59 @@ def test_suite(verbose=False, dxf_test=True):
     # Show the plotted DXF file if available
     plt.show()
 
+def make_dist():
+    '''Creates a tar file for the distribution of this code'''
+    # Find out where this code is being run from
+    root_path = os.path.dirname(os.getcwd())
+    base_path = os.path.basename(os.getcwd())
+    os.chdir('..')
+    # Set file types to ignore
+    ignore_types = ['.pyc', '.pcs', '.dwl', '.dwl2']
+    tar_name = base_path+'.tar.gz'
+    with tarfile.open(tar_name, 'w:gz') as tar:
+        for root, dirs, files in os.walk(base_path):
+            # Ignore hidden files and .pyc files
+            files = [f for f in files if (not f[0] == '.') and (not [ext for ext in ignore_types if ext in f[-4:]])]
+            # Ignore hidden directories
+            dirs[:] = [d for d in dirs if not d[0] == '.']
+            # Add these files to the tar file
+            for f in files:
+                print 'adding', os.path.join(root, f)
+                tar.add(os.path.join(root, f))
+        print 'packaging code as {} at {}'.format(tar_name, root_path)
+        tar.close()
+    os.chdir('./DXFtoMesh')
+
 # NOTE: Argument parsing requires Python 2.7x or higher
 # Parses command-line input arguemtns
 help_string = '''Reads a DXF file and then converts it to a suitable form for
                  use in creating computational meshes for CrysMAS and Cats2D'''
 parser = argparse.ArgumentParser(description=help_string)
+
 # Specify the DXF file (required)
-help_string = '''Specify the DXF file to convert or specify \'test\' to run the
-                 test suite'''
+help_string = '''Specify the DXF file to convert, specify \'test\' to run the
+                 test suite, or \'dist\' to create the distribution of this
+                 program'''
 parser.add_argument('dxf_file', action='store', type=str, 
                     metavar='dxf_file or \'test\'', help=help_string)
+
 # Create verbose mode
 parser.add_argument('-v', '--verbose', action='store_true')
+
 # Specify whether information should be output to CrysMAS and optionally specify
 # a new filename
 help_string = '''Turn the DXF file into a CrysMAS .pcs mesh file. A file name
                  for the .pcs file can optionally be specified'''
 parser.add_argument('--crysmas', nargs='?', metavar='file',
                     const=True, help=help_string)
+
 # Specify the units of the DXF file
-help_string = '''Specify the units for the DXF file'''
+help_string = 'Specify the units for the DXF file'
 parser.add_argument('--units', action='store', default='mm', help=help_string)
+
+# Pickle the DXFGeometry object
+help_string = 'Create a pickle file of the DXFGeoemtry object'
+parser.add_argument('--pickle', nargs='?', const=True, help=help_string)
 
 # Skip DXF tests if option is passed
 help_string = '''Skips the DXF tests if testing mode is activated'''
@@ -101,6 +135,9 @@ if args.dxf_file == 'test':
         test_suite(verbose=args.verbose, dxf_test=not(args.nodxf))
     # Exit immediately after testing is complete
     sys.exit()
+# Create distribution from the command line
+elif args.dxf_file == 'dist':
+    make_dist()
 # Otherwise create a DXF geometry object
 else: 
     dxf = DXFGeometry(args.dxf_file, verbose=args.verbose)
@@ -112,5 +149,12 @@ if args.crysmas:
     else:
         crys_file = None
     dxf.output_to_crysmas(dxf_units=args.units, f_name=crys_file)
+
+# Create a pickle file
+if args.pickle:
+    if args.pickle != True:
+        dxf.pickle(f_name=args.pickle)
+    else:
+        dxf.pickle()
 
     
