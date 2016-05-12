@@ -23,6 +23,7 @@ import math
 import numpy as np
 import os
 import pickle
+import pkg_resources
 from matplotlib import pyplot as plt
 from HelperFunctions import angle360, anglespace, approx, bulge_to_arc, \
                             ccw_angle_diff, tuple2_check, tuple_string_check
@@ -355,6 +356,9 @@ class DXFGeometry():
                                     patterns.
                                     (Default = 1.0e-08)
         '''
+        # Make sure the right dxfgrabber is installed
+        self.dxfgrabber_version_check()
+
         self.dxf_path = dxf_file
         self.verts = VertexList()
         self.segments = set([])
@@ -379,6 +383,18 @@ class DXFGeometry():
         if not no_file:
             self.add_entities(self.dxf.entities)
             self.rem_reversed()
+
+    def dxfgrabber_version_check(self):
+        '''
+        Checks if the current DXFgrabber version is acceptable. Currently
+        version 0.8.0 is incompatible.
+        '''
+        version = pkg_resources.get_distribution('dxfgrabber').version
+        if version == '0.8.0':
+            raise ImportError('dxfgrabber version should not be 0.8.0')
+        elif cmp('0.7.5', version) > 0:
+            raise ImportWarning('''dxfgrabber versions later than 0.8.0 have not
+                                been tested... use with caution''')
 
     def vprint(self, *args):
         '''Printing function that is responsive to self.verbose'''
