@@ -377,7 +377,7 @@ class DXFtoCrysMASTests(unittest.TestCase):
         self.assertTrue(check, msg)
 
 def main():
-    print '''Please run the test suite from the MeshGenerator.py file by using
+    print '''Please run the test suite from the MeshMaker.py file by using
     the command line argument `test` with the optional verbose mode.'''
 
 # Check whether the script is being excuted by itself
