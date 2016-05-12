@@ -34,7 +34,7 @@ class TestVertex(unittest.TestCase):
         dummy_v = Vertex((x,y))
         self.assertEqual(dummy_v.x, x, 'incorrect x-value stored')
         self.assertEqual(dummy_v.y, y, 'incorrect y-value stored')
-        self.assertEqual(dummy_v.id, str((float(x),float(y))),
+        self.assertEqual(dummy_v.id, (float(x),float(y)),
                             'vertex id is not string of tuple')
 
     def test_decimal_creation(self):
@@ -44,7 +44,7 @@ class TestVertex(unittest.TestCase):
         dummy_v = Vertex((x,y))
         self.assertEqual(dummy_v.x, x, 'incorrect x-value stored')
         self.assertEqual(dummy_v.y, y, 'incorrect y-value stored')
-        self.assertEqual(dummy_v.id, str((float(x),float(y))),
+        self.assertEqual(dummy_v.id, (float(x),float(y)),
                             'vertex id is not string of tuple')
 
     def test_scientifc_creation(self):
@@ -54,31 +54,31 @@ class TestVertex(unittest.TestCase):
         dummy_v = Vertex((x,y))
         self.assertEqual(dummy_v.x, x, 'incorrect x-value stored')
         self.assertEqual(dummy_v.y, y, 'incorrect y-value stored')
-        self.assertEqual(dummy_v.id, str((float(x),float(y))),
+        self.assertEqual(dummy_v.id, (float(x),float(y)),
                             'vertex id is not string of tuple')
 
     def test_connect(self):
         '''Add connection information to vertex'''
         new_vertex = (0.,1.)
-        self.v.con(str(new_vertex))
-        check = str(new_vertex) in self.v.connected
+        self.v.con(new_vertex)
+        check = new_vertex in self.v.connected
         self.assertTrue(check, 'new vertex not connected')
 
     def test_connect_multiple(self):
         '''Add multiple connections to vertex'''
         new_vertex1 = (0.,1.)
         new_vertex2 = (-2., -2.)
-        self.v.con(str(new_vertex1))
-        self.v.con(str(new_vertex2))
-        check = (str(new_vertex1) in self.v.connected) and \
-                    (str(new_vertex2) in self.v.connected)
+        self.v.con(new_vertex1)
+        self.v.con(new_vertex2)
+        check = (new_vertex1 in self.v.connected) and \
+                    (new_vertex2 in self.v.connected)
         self.assertTrue(check, 'new verticies not connected')
 
     def test_disconnect(self):
         '''Remove connection information from vertex'''
         new_vertex = (0,1) #First connect a vertex
-        self.v.con(str(new_vertex))
-        self.v.discon(str(new_vertex)) #Now disconnect it
+        self.v.con(new_vertex)
+        self.v.discon(new_vertex) #Now disconnect it
         check = new_vertex in self.v.connected
         self.assertFalse(check, 'new vertex still connected')
 
@@ -116,7 +116,7 @@ class TestVertexList(unittest.TestCase):
         corners = set([])
         for x in np.linspace(self.x_low, self.x_high, 2):
             for y in np.linspace(self.y_low, self.y_high, 2):
-                corners.add(str((x,y)))
+                corners.add((x,y))
         # Connect vertex to every other vertex except itself
         for c1 in corners:
             for c2 in corners:
@@ -131,7 +131,7 @@ class TestVertexList(unittest.TestCase):
         for c in corners:
             other_corners = corners.copy()
             other_corners.remove(c)
-            check = self.v_list.verticies[str(c)].connected == other_corners
+            check = self.v_list.verticies[c].connected == other_corners
             if not check:
                 checks.append(check)
 
@@ -149,7 +149,7 @@ class TestVertexList(unittest.TestCase):
         corners = set([])
         for x in np.linspace(self.x_low, self.x_high, 2):
             for y in np.linspace(self.y_low, self.y_high, 2):
-                corners.add(str((x,y)))
+                corners.add((x,y))
         # Connect vertex to every other vertex except itself
         for c1 in corners:
             for c2 in corners:
@@ -180,7 +180,7 @@ class TestVertexList(unittest.TestCase):
         self.assertTrue(check, 'vertex was not removed properly')
         # Now check if the vertex has been removed from the dict
         with self.assertRaises(KeyError):
-            self.v_list.verticies[str(v_remove)]
+            self.v_list.verticies[v_remove]
 
     def test_move_vertex(self):
         '''Move a vertex'''
@@ -218,7 +218,7 @@ class TestDXFGeometry(unittest.TestCase):
         msg = '{} and {} were not added to verticies'.format(start, end)
         self.assertTrue(check, msg)
         # Make sure verticies are connected
-        check = str(end) in dxfgeom.verts.verticies[str(start)].connected
+        check = end in dxfgeom.verts.verticies[start].connected
         msg = '{} not properly connected by line {}'.format(end, entity)
         self.assertTrue(check, msg)
 

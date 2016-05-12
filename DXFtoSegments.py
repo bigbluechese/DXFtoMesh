@@ -26,7 +26,7 @@ import pickle
 import pkg_resources
 from matplotlib import pyplot as plt
 from HelperFunctions import angle360, anglespace, approx, bulge_to_arc, \
-                            ccw_angle_diff, tuple2_check, tuple_string_check
+                            ccw_angle_diff, tuple2_check
 
 class Vertex():
     '''
@@ -67,10 +67,8 @@ class Vertex():
 
         self.x = coords[0]
         self.y = coords[1]
-        self.id = str(coords)
+        self.id = coords
         self.connected = set([])
-        # se_pattern = '[-+]?[0-9]*\.?[0-9]+[eE]?[-+]?[0-9]*'
-        # self.tuple_check = re.compile('[(]({0}), ({0})[)]'.format(se_pattern))
 
     def con(self, vertexID):
         '''
@@ -80,18 +78,18 @@ class Vertex():
         vertexID (str)      --  vertexID to connect to the current vertex
 
         RAISES:
-        TypeError           --  if vertexID is not of the form str(tuple)
+        TypeError           --  if vertexID is not a tuple
         RuntimeError        --  if vertexID is the same as this vertex's ID
         '''
-        # Check to make sure the ID is a str() of a two-number tuple
+        # Check to make sure the ID is a two-number tuple
         try:
-            vertexID = tuple_string_check(vertexID)
-        except TypeError:
-            raise('vertex to be connected must be a string')
+            vertexID = tuple2_check(vertexID)
+        except (TypeError, IndexError) as e:
+            raise('''vertex to be connected must be a length 2 tuple not 
+                  {}'''.format(vertexID))
         except ValueError:
-            msg = '''Cannot connect vertex \'{}\' because is not the correct
-            form. Vertex IDs must be str() applied to a two-element tuple
-            containing numbers'''.format(vertexID)
+            msg = '''Cannot connect vertex \'{}\' because is does not contain 
+            numbers'''.format(vertexID)
             raise TypeError(msg)
         if vertexID == self.id:
             raise RuntimeError('Cannot connect a vertex to itself')
@@ -108,17 +106,17 @@ class Vertex():
         RAISES:
         KeyError            --  If vertexID is not part of the set of connected
                                 vertecies
-        TypeError           --  If vertexID is not of the form str(tuple)
+        TypeError           --  If vertexID is not a tuple
         '''
-        # Check to make sure the ID is a str() of a two-number tuple
+        # Check to make sure the ID is a two-number tuple
         try:
-            vertexID = tuple_string_check(vertexID)
-        except TypeError:
-            raise('vertex to be connected must be a string')
+            vertexID = tuple2_check(vertexID)
+        except (TypeError, IndexError) as e:
+            raise('''vertex to be connected must be a length 2 tuple not 
+                  {}'''.format(vertexID))
         except ValueError:
-            msg = '''Cannot disconnect vertex \'{}\' because is not the correct
-            form. Vertex IDs must be str() applied to a two-element tuple
-            containing numbers'''.format(vertexID)
+            msg = '''Cannot connect vertex \'{}\' because is does not contain 
+            numbers'''.format(vertexID)
             raise TypeError(msg)
 
         # Raise error if not connected
@@ -143,9 +141,9 @@ class VertexList():
     coordinates (set)       --  A list of all vertex coordinates. Coordinates
                                 are given as tuples.
     verticies (dict)        --  A dictionary of all verticies with keys given by
-                                the str() of their tuple coodinates. Each item
-                                is a vertex class with more specific information
-                                about the vertex.
+                                their tuple coodinates. Each item is a vertex
+                                class with more specific information about the
+                                vertex.
     '''
     def __init__(self):
         self.coordinates = set([]) #set of vertex coordinate tuples
@@ -171,7 +169,7 @@ class VertexList():
         # Check if the vertex was added. If it wasn't, that means it's already
         # in the set so it shouldn't be added
         if new_len > initial_len:
-            self.verticies[str(v_coords)] = Vertex(v_coords)
+            self.verticies[v_coords] = Vertex(v_coords)
 
     def connect(self, vertex1, vertex2):
         '''
@@ -187,8 +185,8 @@ class VertexList():
         KeyError                --  if vertex has not yet been added
         '''
         # Check that input is correct and convert for consistency
-        vertex1 = tuple_string_check(vertex1)
-        vertex2 = tuple_string_check(vertex2)
+        vertex1 = tuple2_check(vertex1)
+        vertex2 = tuple2_check(vertex2)
 
         try:
             self.verticies[vertex1].con(vertex2)
@@ -217,15 +215,14 @@ class VertexList():
         KeyError                --  if vertex has not yet been added
         '''
         # Check that input is correct and convert for consistency
-        vertex1 = tuple_string_check(vertex1)
-        vertex2 = tuple_string_check(vertex2)
+        vertex1 = tuple2_check(vertex1)
+        vertex2 = tuple2_check(vertex2)
 
         # Remove vertex 2 from list of connections for vertex 1
         try:
             self.verticies[vertex1].discon(vertex2)
         except KeyError as inst:
             raise
-            #raise KeyError('{} is not an existing vertex'.format(vertex1))
 
         # Remove vertex 1 from list of connections for vertex 2
         try:
@@ -255,14 +252,14 @@ class VertexList():
             raise KeyError('{} is not an existing vertex'.format(v_coords))
 
         # Now figure out the connectivity
-        connections = self.verticies[str(v_coords)].connected
+        connections = self.verticies[v_coords].connected
 
         # Remove all of the connections between this vertex and others
         for vertexID in connections:
-            self.disconnect(str(v_coords), vertexID)
+            self.disconnect(v_coords, vertexID)
 
         # Now finally delete the vertex in the dict
-        del self.verticies[str(v_coords)]
+        del self.verticies[v_coords]
 
     def move_vertex(self, v_coords1, v_coords2):
         '''
@@ -282,7 +279,7 @@ class VertexList():
         v_coords2 = tuple2_check(v_coords2)
 
         try:
-            connections = self.verticies[str(v_coords1)].connected
+            connections = self.verticies[v_coords1].connected
         except KeyError:
             raise KeyError('{} is not an existing vertex'.v_coords1)
 
@@ -294,7 +291,7 @@ class VertexList():
 
         # Add back the connections
         for vertexID in connections:
-            self.connect(str(v_coords2), vertexID)
+            self.connect(v_coords2, vertexID)
 
 class DXFGeometry():
     '''
