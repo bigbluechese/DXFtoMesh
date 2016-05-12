@@ -70,6 +70,9 @@ class Vertex():
         self.id = coords
         self.connected = set([])
 
+    def __repr__(self):
+        return 'Vertex({}, {})'.format(self.x, self.y)
+
     def con(self, vertexID):
         '''
         Records a vertex as connected to the current vertex
@@ -380,6 +383,9 @@ class DXFGeometry():
         if not no_file:
             self.add_entities(self.dxf.entities)
             self.rem_reversed()
+
+    def __repr__(self):
+        return 'DXFGeometry object created from {}.dxf'.format(self.dxf_name)
 
     def dxfgrabber_version_check(self):
         '''
@@ -896,7 +902,7 @@ class DXFGeometry():
 def main():
     print '''This file contains classes that are used to create a DXFGeometry
     object from a DXF file for then creating a computational mesh in either
-    CrysMAS or Cats2D. Please run the MeshGenerator.py file for usage
+    CrysMAS or Cats2D. Please run the MeshMaker.py file for usage
     information'''
 
 # Check whether the script is being excuted by itself

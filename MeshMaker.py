@@ -6,7 +6,7 @@ vertexes that can then be converted into a CrysMAS or Cats2D mesh.
 
 Requirements:
 - Python 2.7x
-- dxfgrabber 0.7.5 (0.8.0 is incompatible)
+- dxfgrabber 0.7.5 (0.8.0 is incompatible without patch)
 - SciPy Stack
 - DXFtoSegments.py
 - HelperFunctions.py
