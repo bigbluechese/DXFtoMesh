@@ -298,6 +298,9 @@ class VertexList():
 
 class DXFGeometry():
     '''
+    DEVELOPER NOTES:
+        - Need to add a method to move a vertex
+
     Class that first reads a DXF file and then converts the information there
     into a form that is appropriate for making meshes. Specifically, the class
     will take the DXF file, break it into its vertecies and also into the

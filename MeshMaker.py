@@ -41,6 +41,7 @@ def test_suite(verbose=False, dxf_test=True):
     suites = []
     suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertex))
     suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertexList))
+    suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.LineIntersectTests))
     if dxf_test:
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestDXFGeometry))
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.DXFTestCases))

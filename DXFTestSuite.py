@@ -11,6 +11,7 @@ import dxfgrabber
 import math
 import numpy as np
 from HelperFunctions import bulge_to_arc, approx, ccw_angle_diff
+import lineintersect
 import pickle
 import filecmp
 
@@ -374,6 +375,111 @@ class DXFtoCrysMASTests(unittest.TestCase):
         test_file = './DXFTests/Testing.pcs'
         check = filecmp.cmp(test_file, standard)
         msg = 'File information differs between {} and {}'.format(standard, test_file)
+        self.assertTrue(check, msg)
+
+class LineIntersectTests(unittest.TestCase):
+    '''Check for line intersection'''
+    def test_ccw(self):
+        '''Points are counter-clockwise'''
+        A = (0,0)
+        B = (1,0)
+        C = (0,1)
+        check = lineintersect.check_ccw(A, B, C) == 1
+        msg = '''Points {}, {}, {} were not determined to be
+                 counter-clockwise'''.format(A, B, C)
+        self.assertTrue(check, msg)
+
+    def test_colinear(self):
+        '''Points are colinear to within tolerances'''
+        tol = 1e-05
+        A = (0,0)
+        B = (1,1)
+        C = (0.5+0.99*tol, 0.5)
+        check = lineintersect.check_ccw(A, B, C, tol=tol) == 0
+        msg = '''Points {}, {}, {} were not found to be colinear to within the
+                 specified tolerance of {}'''.format(A, B, C, tol)
+        self.assertTrue(check, msg)
+
+    def test_intersection(self):
+        '''Lines intersect simply'''
+        line1 = ((0,0), (1,1))
+        line2 = ((1,0), (0,1))
+        result = lineintersect.intersection(line1, line2)
+        check = result[0] == 1
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_no_intersection(self):
+        '''Lines do not intersect'''
+        line1 = ((0,0), (1,1))
+        line2 = ((-1,0), (0,-1))
+        result = lineintersect.intersection(line1, line2)
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertFalse(result, msg)
+
+    def test_intersection_2(self):
+        '''Lines share a common end-point'''
+        line1 = ((0,0), (1,0))
+        line2 = ((1,0), (1,1))
+        result = lineintersect.intersection(line1, line2)
+        check = result[0] == 2
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_intersection_2_tol(self):
+        '''Lines share a common end-point to within tolerance'''
+        tol = 1e-05
+        line1 = ((0,0),             (1,0))
+        line2 = ((1,0+0.99*tol),    (1,1))
+        result = lineintersect.intersection(line1, line2, tol=tol)
+        check = result[0] == 2
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_intersection_3(self):
+        '''Line endpoint lies on another line'''
+        line1 = ((0,0),     (0,1))
+        line2 = ((0,0.5),   (1,1))
+        result = lineintersect.intersection(line1, line2)
+        check =  result[0] == 3
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_intersection_3_tol(self):
+        '''Line endpoint lies on another line to within tolerance'''
+        tol = 1e-05
+        line1 = ((0,0),     (0,1))
+        line2 = ((0+0.99*tol,0.5),   (1,1))
+        result = lineintersect.intersection(line1, line2, tol=tol)
+        check = result[0] == 3
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_no_intersection_3(self):
+        '''Line endpoint is colinear with another line but no intersection exists'''
+        line1 = ((0,0),     (0,1))
+        line2 = ((0,2),   (1,1))
+        result = lineintersect.intersection(line1, line2)
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertFalse(result, msg)
+
+    def test_intersection_4(self):
+        '''Two lines are colinear'''
+        line1 = ((0,0), (1,1))
+        line2 = ((-1,-1), (2, 2))
+        result = lineintersect.intersection(line1, line2)
+        check = result[0] == 4
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_intersection_4_tol(self):
+        '''Two lines are colinear within tolerance'''
+        tol = 1e-05
+        line1 = ((0,0+tol), (1,1+tol))
+        line2 = ((-1,-1), (2, 2))
+        result = lineintersect.intersection(line1, line2, tol=tol)
+        check = result[0] == 4
+        msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
 def main():
