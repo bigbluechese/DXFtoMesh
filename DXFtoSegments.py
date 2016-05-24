@@ -256,7 +256,7 @@ class VertexList():
             raise KeyError('{} is not an existing vertex'.format(v_coords))
 
         # Now figure out the connectivity
-        connections = self.verticies[v_coords].connected
+        connections = self.verticies[v_coords].connected.copy()
 
         # Remove all of the connections between this vertex and others
         for vertexID in connections:
@@ -301,7 +301,6 @@ class DXFGeometry():
     '''
     DEVELOPER NOTES:
         - Need to add a method to move a vertex
-        - Add method to reverse a segment
 
     Class that first reads a DXF file and then converts the information there
     into a form that is appropriate for making meshes. Specifically, the class
@@ -378,6 +377,10 @@ class DXFGeometry():
         else:
             self.turn_off_verbose()
 
+        # Turn off verbose mode while testing
+        if self.testing:
+            self.turn_off_verbose()
+
         # Extract path information
         self.work_dir, self.dxf_name = os.path.split(os.path.splitext(self.dxf_path)[0])
 
@@ -407,8 +410,8 @@ class DXFGeometry():
         if version == '0.8.0':
             raise ImportError('dxfgrabber version should not be 0.8.0')
         elif cmp('0.7.5', version) > 0:
-            raise ImportWarning('''dxfgrabber versions later than 0.8.0 have not
-                                been tested... use with caution''')
+            print('''WARNING: dxfgrabber versions later than 0.8.0 have not been
+                     tested... use with caution''')
 
     def turn_on_verbose(self):
         '''Turns on verbose printing'''
@@ -709,10 +712,62 @@ class DXFGeometry():
             print('Reversed segments have been removed from {}'.format(self.dxf_path))
         return pruned_segs
 
+    def move_vertex(self, old_coords, new_coords):
+        '''
+        Moves a vertex belonging to a line. At the moment, only straight lines
+        are supported.
+
+        ARGUMENTS:
+        old_coords (tuple)  --  Coordinates of the old vertex expressed as a
+                                length-2 tuple
+        new_coords (tuple)  --  Coordiantes of the old vertex expressed as arc
+                                length-2 tuple
+
+        RAISES:
+        RuntimeError        --  if a line segment either appears to not exist or
+                                if the segment contains bulge information
+
+        DEVELOPER NOTES:
+        If support for bulges were to be added, one way would be to add a
+        segments dict where the verticies were used as a key and the information
+        was a tuple of bulge information entries. More than one entry could
+        exist for a given set of verticies since one can multiple lines between
+        two points with different bulge values. This would allow bulge
+        information to be modified by moving the vertex although it would be
+        tricky to rationally choose how to modify the bulge information.
+        '''
+        # Make sure the old_coords are actually a vertex
+        try:
+            old_vert = self.verts.verticies[old_coords]
+        except KeyError:
+            print('Vertex cannot be moved because the vertex does not exist!')
+            raise
+
+        # Now find segment information that corresponds to this vertex
+        old_lines = []
+        new_lines = []
+        for vert in old_vert.connected:
+            if ((old_coords, vert), ()) in self.segments:
+                old_lines.append(((old_coords, vert), ()))
+                new_lines.append(((new_coords, vert), ()))
+            elif ((vert, old_coords), ()) in self.segments:
+                old_lines.append(((vert, old_coords), ()))
+                new_lines.append(((vert, new_coords), ()))
+            else:
+                raise RuntimeError('''The segment ({}, {}) likely contains bulge
+                        information. Segments with bulges cannot be moved at this
+                        time.'''.format(old_coords, vert))
+
+        # Move the vertex in the vertex list
+        self.verts.move_vertex(old_coords, new_coords)
+        # Recreate the line segments
+        for old, new in zip(old_lines, new_lines):
+            self.segments.remove(old)
+            self.segments.add(new)
+
     def cats2d_convert(self, invert_coords=True, len_scale=None):
         '''
         Converts the data to a form that can be used in creating a Cats2D mesh.
-        Bulge information is also passed but
 
         OPTIONAL ARGUMENTS:
         invert_coords (bool)--  When evalatues to True, the coordinates for
@@ -734,6 +789,11 @@ class DXFGeometry():
         bulges (list)       --  If any edges have bulges, the bulge information
                                 is saved and indexed to the edges in the form
                                 (edge_index, (bulge_info)).
+
+        WARNINGS:
+        UserWarning         --  if bulge information is passed to this function.
+                                Currently, the bulge information is not output
+                                to Cats2D and may or may not be destroyed.
         '''
         # First create the v_coords list
         v_coords = list(self.verts.coordinates)

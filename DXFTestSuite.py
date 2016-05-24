@@ -147,7 +147,7 @@ class TestVertexList(unittest.TestCase):
         # First add all verticies
         for v in self.v_grid:
             self.v_list.add(v)
-        # Now all connect corners together
+        # Now connect all corners together
         corners = set([])
         for x in np.linspace(self.x_low, self.x_high, 2):
             for y in np.linspace(self.y_low, self.y_high, 2):
@@ -169,10 +169,20 @@ class TestVertexList(unittest.TestCase):
         self.assertTrue(check)
 
     def test_remove_vertex(self):
-        '''Remove vertex from list without connections'''
+        '''Remove vertex from connected set of vertecies'''
         # First add them
         for v in self.v_grid:
             self.v_list.add(v)
+        # Now connect corners together
+        corners = set([])
+        for x in np.linspace(self.x_low, self.x_high, 2):
+            for y in np.linspace(self.y_low, self.y_high, 2):
+                corners.add((x,y))
+        # Connect vertex to every other vertex except itself
+        for c1 in corners:
+            for c2 in corners:
+                if c1 != c2:
+                    self.v_list.connect(c1, c2)
         # Create a copy and remove a vertex
         v_grid_new = self.v_grid.copy()
         v_remove = v_grid_new.pop()
@@ -288,6 +298,31 @@ class TestDXFGeometry(unittest.TestCase):
         check = num_added == num_ents
         msg = '''{} entities were added but {} addable entities exist in test file
               '''.format(num_added, num_ents)
+        self.assertTrue(check, msg)
+
+    def test_move_vertex(self):
+        '''move a vertex'''
+        # Lines to be added
+        lines = set([(( (0.,0.),   (1.,0.) ), ()),
+                     (( (0.,0.),   (1.,1.) ), ()),
+                     (( (-1.,-1.), (0.,0.) ), ())])
+
+        # Add lines to geometry
+        self.empty_dxfgeom.segments = lines
+        for l in lines:
+            self.empty_dxfgeom.verts.add(l[0][0])
+            self.empty_dxfgeom.verts.add(l[0][1])
+            self.empty_dxfgeom.verts.connect(l[0][0], l[0][1])
+
+        # Move the (0,0) vertex
+        self.empty_dxfgeom.move_vertex((0,0), (0.5, 0.5))
+
+        # Check whether it worked
+        new_lines = set([(( (0.5,0.5), (1,0) ),     ()),
+                         (( (0.5,0.5), (1,1) ),     ()),
+                         (( (-1,-1),   (0.5,0.5) ), ())])
+        check = new_lines == self.empty_dxfgeom.segments
+        msg = '''Segment list was not updated correctly after vertex move'''
         self.assertTrue(check, msg)
 
     def test_rem_reversed(self):
