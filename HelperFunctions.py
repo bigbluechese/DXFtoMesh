@@ -4,6 +4,7 @@
 Collection of helper functions used with DXftoSegments module
 '''
 
+from __future__ import print_function
 import numpy as np
 import re
 from numbers import Number

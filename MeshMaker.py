@@ -22,6 +22,7 @@ found by running this script with the '-h' flag afterwards specificaly,
 './DXFtoSegments.py -h'. 
 '''
 
+from __future__ import print_function
 import DXFTestSuite
 from DXFtoSegments import DXFGeometry
 import CreateStandards
@@ -31,6 +32,7 @@ from matplotlib import pyplot as plt
 import os
 import sys
 import tarfile
+
 
 def test_suite(verbose=False, dxf_test=True):
     '''Runs the test suite'''
@@ -78,9 +80,9 @@ def make_dist():
             dirs[:] = [d for d in dirs if not d[0] == '.']
             # Add these files to the tar file
             for f in files:
-                print 'adding', os.path.join(root, f)
+                print('adding', os.path.join(root, f))
                 tar.add(os.path.join(root, f))
-        print 'packaging code as {} at {}'.format(tar_name, root_path)
+        print('packaging code as {} at {}'.format(tar_name, root_path))
         tar.close()
     os.chdir('./DXFtoMesh')
 
@@ -130,7 +132,7 @@ args = parser.parse_args()
 if args.dxf_file == 'test':
     # Create new standards if specified
     if args.newstandard:
-        print 'Creating new standards for tests'
+        print('Creating new standards for tests')
         CreateStandards.save_standards(num_tests=4)
     else:
         test_suite(verbose=args.verbose, dxf_test=not(args.nodxf))

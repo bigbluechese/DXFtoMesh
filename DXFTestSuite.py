@@ -5,6 +5,7 @@ Code Written by Jeff Peterson (2016)
 A suite of tests for checking the functionality of the DXFtoSegments module.
 '''
 
+from __future__ import print_function
 import unittest
 from DXFtoSegments import VertexList, Vertex, DXFGeometry
 import dxfgrabber
@@ -483,8 +484,8 @@ class LineIntersectTests(unittest.TestCase):
         self.assertTrue(check, msg)
 
 def main():
-    print '''Please run the test suite from the MeshMaker.py file by using
-    the command line argument `test` with the optional verbose mode.'''
+    print('''Please run the test suite from the MeshMaker.py file by using
+    the command line argument `test` with the optional verbose mode.''')
 
 # Check whether the script is being excuted by itself
 if __name__=='__main__':

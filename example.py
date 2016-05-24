@@ -2,9 +2,11 @@
 '''
 Example for the usage of the DXFGeometry object within python
 '''
+from __future__ import print_function
 import numpy as np
 import DXFtoSegments
 from matplotlib import pyplot as plt
+
 
 tests = 4
 

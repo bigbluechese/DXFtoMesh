@@ -15,6 +15,7 @@ mean compiling a list of segments to be added rather than adding them
 individually.
 '''
 
+from __future__ import print_function
 import dxfgrabber
 import argparse
 import re
@@ -300,6 +301,7 @@ class DXFGeometry():
     '''
     DEVELOPER NOTES:
         - Need to add a method to move a vertex
+        - Add method to reverse a segment
 
     Class that first reads a DXF file and then converts the information there
     into a form that is appropriate for making meshes. Specifically, the class
@@ -365,10 +367,16 @@ class DXFGeometry():
         self.dxf_path = dxf_file
         self.verts = VertexList()
         self.segments = set([])
-        self.verbose = verbose
         self.tol = tol #Rounds coordinates to this tolerance
         self.testing = testing
         no_file = False
+
+        # Turn on/off verbose printing
+        self.verbose = verbose
+        if self.verbose:
+            self.turn_on_verbose()
+        else:
+            self.turn_off_verbose()
 
         # Extract path information
         self.work_dir, self.dxf_name = os.path.split(os.path.splitext(self.dxf_path)[0])
@@ -402,12 +410,13 @@ class DXFGeometry():
             raise ImportWarning('''dxfgrabber versions later than 0.8.0 have not
                                 been tested... use with caution''')
 
-    def vprint(self, *args):
-        '''Printing function that is responsive to self.verbose'''
-        if self.verbose:
-            for arg in args:
-                print arg,
-            print
+    def turn_on_verbose(self):
+        '''Turns on verbose printing'''
+        self.vprint = lambda *args: print(args) # Standard print function
+
+    def turn_off_verbose(self):
+        '''Turns off verbose printing'''
+        self.vprint = lambda *args: None # Return nothing
 
     def add_dxf(self, dxf_file):
         '''
@@ -656,6 +665,28 @@ class DXFGeometry():
                 if len(self.segments) == initial_len:
                     self.vprint('\tSegment already exists... skipped')
 
+    def reverse_seg(self, seg):
+        '''
+        Reverses a given segment including the bulge information
+        '''
+        # First reverse the segment
+        rev_seg_coords = (seg[0][1], seg[0][0])
+        if seg[1] == ():
+            rev_seg_info = ()
+        else:
+            # Calculate reversed arc/bulge information
+            bulge, start_angle, end_angle, center, radius = seg[1]
+            rev_bulge = -bulge
+            rev_s_angle = end_angle
+            rev_e_angle = start_angle
+            rev_center = center
+            rev_radius = radius
+            rev_seg_info = (rev_bulge, rev_s_angle, rev_e_angle, rev_center,
+                rev_radius)
+        # Create the reversed segment
+        rev_seg = (rev_seg_coords, rev_seg_info)
+        return rev_seg
+
     def rem_reversed(self):
         '''
         Looks at the current set of segments and removes repeat segments that
@@ -666,22 +697,7 @@ class DXFGeometry():
         # Convert segment set to list
         pruned_segs = self.segments.copy()
         for seg in self.segments:
-            # First reverse the segment
-            rev_seg_coords = (seg[0][1], seg[0][0])
-            if seg[1] == ():
-                rev_seg_info = ()
-            else:
-                # Calculate reversed arc/bulge information
-                bulge, start_angle, end_angle, center, radius = seg[1]
-                rev_bulge = -bulge
-                rev_s_angle = end_angle
-                rev_e_angle = start_angle
-                rev_center = center
-                rev_radius = radius
-                rev_seg_info = (rev_bulge, rev_s_angle, rev_e_angle, rev_center,
-                    rev_radius)
-            # Create the reversed segment
-            rev_seg = (rev_seg_coords, rev_seg_info)
+            rev_seg = self.reverse_seg(seg)
             # Check if the reversed segment is in the list of segments
             if rev_seg in pruned_segs:
                 # Remove the non-reversed segment
@@ -690,7 +706,7 @@ class DXFGeometry():
                 continue
         self.segments = pruned_segs
         if not self.testing:
-            print 'Reversed segments have been removed from {}'.format(self.dxf_path)
+            print('Reversed segments have been removed from {}'.format(self.dxf_path))
         return pruned_segs
 
     def cats2d_convert(self, invert_coords=True, len_scale=None):
@@ -830,7 +846,7 @@ class DXFGeometry():
         # Close the file
         crys_file.close()
 
-        print 'Saving to CrysMAS geometry {}...'.format(crys_path)
+        print('Saving to CrysMAS geometry {}...'.format(crys_path))
 
 
     def display(self):
@@ -888,7 +904,7 @@ class DXFGeometry():
         plt.axis('scaled')
         plt.draw() # Plot must be shown to be visible so after calling the
 
-        print 'Geometry for {} is queued for display...'.format(self.dxf_path)
+        print('Geometry for {} is queued for display...'.format(self.dxf_path))
 
     def pickle(self, f_name=None):
         '''
@@ -903,10 +919,10 @@ class DXFGeometry():
         fo.close()
 
 def main():
-    print '''This file contains classes that are used to create a DXFGeometry
+    print('''This file contains classes that are used to create a DXFGeometry
     object from a DXF file for then creating a computational mesh in either
     CrysMAS or Cats2D. Please run the MeshMaker.py file for usage
-    information'''
+    information''')
 
 # Check whether the script is being excuted by itself
 if __name__=="__main__":
