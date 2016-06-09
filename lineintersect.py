@@ -6,6 +6,13 @@ lines up into segments such that no lines intersect and instead only share
 end points
 '''
 
+import math
+
+def distance(point1, point2):
+    '''Calculates the distance between two points'''
+    dist = math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
+    return dist
+
 def check_ccw(A, B, C, tol=1e-06):
     '''
     Checks whether three points A, B, and C are oriented counter-clockwise
@@ -45,13 +52,18 @@ def check_ccw(A, B, C, tol=1e-06):
 def intersection(line1, line2, tol=1.0e-06):
     '''
     Checks whether two lines intersect each other by comparing the chirality of
-    all combinations of three points taken from the four end points. Three
+    all combinations of three points taken from the four end points. Five
     possible cases are idenitifed:
     1) the lines form a simple intersection with no three points being colinear
     2) two lines share a common end-point
     3) a point on one line is colinear with the points on the other line
     4) both lines are colinear
     5) the lines do not intersect at all
+
+    If the lines interesect, the number of the case (1-4) will be returned
+    along with the results of the counter-clockwise tests that help idenitfy
+    how the two lines intersect. If the lines do not intersect, nothing is
+    returned.
 
     ARGUMENTS:
     line1 (tuple 2) --  length-2 tuple containing the end points of the first
@@ -100,9 +112,17 @@ def intersection(line1, line2, tol=1.0e-06):
     # Sum absolute values of tests to determine how many points are colinear
     ccw_sum = sum([abs(x) for x in ccw_tests])
 
-    # Check for the type
+    # Check for the type of intersection
     if ccw_sum == 0:
-        case = 4 # All points are colinear
+        # All Points are colinear
+        points = {'a':a, 'b':b, 'c':c, 'd':d}
+        sort_points = sorted(points, key=points.__getitem__)
+        pairs = {'a':'b', 'b':'a', 'c':'d', 'd':'c'}
+        #Check if paired points are adjacent after being sorted
+        if sort_points[1] != pairs[sort_points[0]]:
+            case = 4 # All points are colinear and lines overlap
+        else:
+            return None # Points are colinear but do not overlap
     elif ccw_sum == 2:
         case = 2 # An endpoint is shared between lines
     elif ccw_sum == 3:

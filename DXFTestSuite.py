@@ -518,6 +518,14 @@ class LineIntersectTests(unittest.TestCase):
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
+    def test_no_intersection_4(self):
+        '''Two lines are colinear without overlapping'''
+        line1 = ((0,0), (1,1))
+        line2 = ((1.5,1.5), (2,2))
+        result = lineintersect.intersection(line1, line2)
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertFalse(result, msg)
+
 def main():
     print('''Please run the test suite from the MeshMaker.py file by using
     the command line argument `test` with the optional verbose mode.''')
