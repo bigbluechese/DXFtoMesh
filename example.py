@@ -22,3 +22,6 @@ dxf3 = dxf_objects[2]
 dxf4 = dxf_objects[3]
 
 clamshell = DXFtoSegments.DXFGeometry('./DXFTests/DXFTest_Clamshellv5.dxf')
+
+clamshell.display()
+plt.show()
