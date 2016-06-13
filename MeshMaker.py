@@ -8,6 +8,7 @@ Requirements:
 - Python 2.7x
 - dxfgrabber 0.7.5 (0.8.0 is incompatible without patch)
 - SciPy Stack
+- sortedcontainers 1.5.3
 - DXFtoSegments.py
 - HelperFunctions.py
 

@@ -7,6 +7,67 @@ end points
 '''
 
 import math
+from sortedcontainers import SortedDict
+
+class active_vertex(object):
+    '''
+    Active vertex class for use in finding intersections between lines. An
+    active vertex is one that the sweep line has passed over and that has
+    connected vertices over which the sweep line has NOT yet passed.
+
+    ATTRIBUTES:
+    x (float)           --  x-coordinate of vertex
+    y (float)           --  y-coordiante of vertex
+    connections (list)  --  list of tuples that represented connected vertices
+    rem_req (int)       --  number of remove requests that have been issued
+                            against the vertex
+
+    RAISES:
+    RuntimeError        --  if the vertex has no connections and thus is useless
+                            for defining a line
+    '''
+    def __init__(self, vert_obj):
+        '''
+        ARGUMENTS:
+        vert_obj (vertex object)
+        --  Vertex object containing information about the vertex with the
+            following attributes:
+                - x (float)             --  x-coordinate of the vertex
+                - y (float)             --  y-coordiante of the vertex
+                - connections (list)    --  list of coordiante tuples that are
+                                            connected to this vertex
+        '''
+        self.x = vert_obj.x
+        self.y = vert_obj.y
+        self.connections = vert_obj.connections
+        self.rem_req = 0
+
+        # If a vertex has no connections, it's not useful for defining a line
+        if len(self.connections) == 0:
+            msg = '''The vertex, {}, to be activated does not have any connections
+                     and should be removed.'''.format{vert_obj}
+            raise RuntimeError(msg)
+
+    def __repr__(self):
+        return 'Active Vertex({}, {})'.format(self.x, self.y)
+
+    def request_removal(self):
+        '''
+        Request that this vertex be deactivated. When the number of remove
+        requests equals the number of connections to a vertex, the vertex will
+        raise a ValueError.
+
+        RAISES:
+        ValueErorr  --  When the number of remove requests equals or exceeeds
+                        the number of connections for the vertex.
+        '''
+        self.rem_req += 1 # Add a remove request
+        if self.rem_req >= len(self.connections):
+            msg = '''Remove requests, {}, exceed number of connections, {}. This
+                     vertex should be deactivated
+                     '''.format(self.rem_req, len(self.connections))
+            raise ValueError(msg)
+
 
 def distance(point1, point2):
     '''Calculates the distance between two points'''
@@ -145,3 +206,37 @@ def intersection(line1, line2, tol=1.0e-06):
             return None
     # Return the situation
     return case, ccw_tests
+
+def find_intersections(vertices):
+    '''
+    Finds the intersections between line segments. These intersections can
+    be of four forms:
+    1) two lines simply intersect and have different slopes
+    2) two lines share a common end-point
+    3) one endpoint lies on the other line
+    4) both lines are colinear and overlap
+
+    or no intersection occurs.
+
+    A sweep-line algorithm is used to locate
+    intersections. This works by first ordering the vertices from left to right/
+    bottom to top and then looping through the vertices. A vertex is "activated"
+    when the sweep line passes through it. If the vertex is a left or bottom
+    vertex, it is added into the list of active vertices. If a vertex is a right
+    or top vertex, the algorithm checks for an intersection between all active
+    vertices that vertically lie between the two endpoints plus one vertex above
+    the line and one below. If the right/top point has other connections, it is
+    added to the active vertex list and a remove request is made against the
+    left/bottom vertex. Once the number of remove requests equals the number of
+    connections on that vertex, that vertex is deactivated.
+
+    The intersections are stored as a tuple of the two lines that have
+    intersected in addition to the type of intersection that has ocurred.
+    '''
+    # First order the verticies from left to right (i.e by x coordinate)
+    sorted_verts = SortedDict(vertices)
+
+
+
+
+
