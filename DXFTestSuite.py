@@ -63,7 +63,7 @@ class TestVertex(unittest.TestCase):
         '''Add connection information to vertex'''
         new_vertex = (0.,1.)
         self.v.con(new_vertex)
-        check = new_vertex in self.v.connected
+        check = new_vertex in self.v.connections
         self.assertTrue(check, 'new vertex not connected')
 
     def test_connect_multiple(self):
@@ -72,16 +72,16 @@ class TestVertex(unittest.TestCase):
         new_vertex2 = (-2., -2.)
         self.v.con(new_vertex1)
         self.v.con(new_vertex2)
-        check = (new_vertex1 in self.v.connected) and \
-                    (new_vertex2 in self.v.connected)
-        self.assertTrue(check, 'new verticies not connected')
+        check = (new_vertex1 in self.v.connections) and \
+                    (new_vertex2 in self.v.connections)
+        self.assertTrue(check, 'new vertices not connected')
 
     def test_disconnect(self):
         '''Remove connection information from vertex'''
         new_vertex = (0,1) #First connect a vertex
         self.v.con(new_vertex)
         self.v.discon(new_vertex) #Now disconnect it
-        check = new_vertex in self.v.connected
+        check = new_vertex in self.v.connections
         self.assertFalse(check, 'new vertex still connected')
 
 
@@ -91,7 +91,7 @@ class TestVertexList(unittest.TestCase):
     '''
     def setUp(self):
         self.v_grid = set([]) #Create an empty set of vertexes to be tested
-        x_steps, y_steps = 10, 10 #Range/domain of verticies
+        x_steps, y_steps = 10, 10 #Range/domain of vertices
         self.x_low, self.x_high, self.y_low, self.y_high = 0., 1., 0., 1.
         self.v_list = VertexList()
         for x in np.linspace(self.x_low, self.x_high, x_steps):
@@ -102,16 +102,16 @@ class TestVertexList(unittest.TestCase):
         self.v_grid = None
         self.v_list = None
 
-    def test_add_verticies(self):
+    def test_add_vertices(self):
         '''Add new vetecies'''
         for v in self.v_grid:
             self.v_list.add(v)
         check = self.v_list.coordinates == self.v_grid
         self.assertTrue(check, 'vertex list set is not equal to set to be added')
 
-    def test_connect_verticies(self):
-        '''Connect verticies'''
-        # First add all verticies
+    def test_connect_vertices(self):
+        '''Connect vertices'''
+        # First add all vertices
         for v in self.v_grid:
             self.v_list.add(v)
         # Now connect corners together
@@ -133,18 +133,18 @@ class TestVertexList(unittest.TestCase):
         for c in corners:
             other_corners = corners.copy()
             other_corners.remove(c)
-            check = self.v_list.verticies[c].connected == other_corners
+            check = self.v_list.vertices[c].connections == other_corners
             if not check:
                 checks.append(check)
 
-        msg = '{} of {} verticies did not have proper connectivity'.format(len(checks),
+        msg = '{} of {} vertices did not have proper connectivity'.format(len(checks),
                                                                         len(corners))
         self.assertFalse(bool(checks), msg)
 
 
-    def test_disconnect_verticies(self):
-        '''Disconnect verticies'''
-        # First add all verticies
+    def test_disconnect_vertices(self):
+        '''Disconnect vertices'''
+        # First add all vertices
         for v in self.v_grid:
             self.v_list.add(v)
         # Now connect all corners together
@@ -164,8 +164,8 @@ class TestVertexList(unittest.TestCase):
         corner1 = new_connections.pop()
         corner2 = new_connections.pop()
         self.v_list.disconnect(corner1, corner2)
-        check = (self.v_list.verticies[corner1].connected == new_connections) \
-                and (self.v_list.verticies[corner2].connected == new_connections)
+        check = (self.v_list.vertices[corner1].connections == new_connections) \
+                and (self.v_list.vertices[corner2].connections == new_connections)
         self.assertTrue(check)
 
     def test_remove_vertex(self):
@@ -192,11 +192,11 @@ class TestVertexList(unittest.TestCase):
         self.assertTrue(check, 'vertex was not removed properly')
         # Now check if the vertex has been removed from the dict
         with self.assertRaises(KeyError):
-            self.v_list.verticies[v_remove]
+            self.v_list.vertices[v_remove]
 
     def test_move_vertex(self):
         '''Move a vertex'''
-        # First add all verticies
+        # First add all vertices
         for v in self.v_grid:
             self.v_list.add(v)
         # Now move the lowest vertex to a negative value
@@ -220,17 +220,17 @@ class TestDXFGeometry(unittest.TestCase):
         self.test_dxf = None
         self.empty_dxfgeom = None
 
-    def check_verticies(self, tup, dxfgeom, entity):
-        '''verticies are in vertex list and they are connected'''
+    def check_vertices(self, tup, dxfgeom, entity):
+        '''vertices are in vertex list and they are connected'''
         tol = dxfgeom.tol
         start = (approx(tup[0][0], tol), approx(tup[0][1],tol))
         end = (approx(tup[1][0], tol), approx(tup[1][1],tol))
-        # Check to make sure start and end are verticies now
+        # Check to make sure start and end are vertices now
         check = (start in dxfgeom.verts.coordinates) and (end in dxfgeom.verts.coordinates)
-        msg = '{} and {} were not added to verticies'.format(start, end)
+        msg = '{} and {} were not added to vertices'.format(start, end)
         self.assertTrue(check, msg)
-        # Make sure verticies are connected
-        check = end in dxfgeom.verts.verticies[start].connected
+        # Make sure vertices are connected
+        check = end in dxfgeom.verts.vertices[start].connections
         msg = '{} not properly connected by line {}'.format(end, entity)
         self.assertTrue(check, msg)
 
@@ -244,7 +244,7 @@ class TestDXFGeometry(unittest.TestCase):
                 start = (approx(e.start[0], tol=tol), 
                          approx(e.start[1], tol=tol))
                 end = (e.end[0], e.end[1])
-                self.check_verticies((start, end), self.empty_dxfgeom, e)
+                self.check_vertices((start, end), self.empty_dxfgeom, e)
 
     def test_add_arc(self):
         '''add an arc to the geometry'''
@@ -265,7 +265,7 @@ class TestDXFGeometry(unittest.TestCase):
                          approx(radius*math.sin(start_angle) + center[1], tol=tol))
                 end = (approx(radius*math.cos(end_angle) + center[0], tol=tol), 
                        approx(radius*math.sin(end_angle) + center[1], tol=tol))
-                self.check_verticies((start, end), self.empty_dxfgeom, e)
+                self.check_vertices((start, end), self.empty_dxfgeom, e)
 
     def test_add_polyline(self):
         '''add a polyline to the geometry'''
@@ -286,7 +286,7 @@ class TestDXFGeometry(unittest.TestCase):
                              approx(p[1], tol=tol))
                     end = (approx(p_next[0], tol=tol), 
                             approx(p_next[1], tol=tol))
-                    self.check_verticies((start, end), self.empty_dxfgeom, e)
+                    self.check_vertices((start, end), self.empty_dxfgeom, e)
 
     def test_add_entities(self):
         '''add entites from a DXF file'''
@@ -347,7 +347,7 @@ class TestDXFGeometry(unittest.TestCase):
         true_arcs = set([bulge_to_arc((0,0), (1,0), -1),
                          bulge_to_arc((0,0), (1,1), 1)])
 
-        # Add all lines and verticies
+        # Add all lines and vertices
         self.empty_dxfgeom.segments |= lines | arcs
         for l in lines:
             self.empty_dxfgeom.verts.add(l[0][0])
@@ -525,6 +525,11 @@ class LineIntersectTests(unittest.TestCase):
         result = lineintersect.intersection(line1, line2)
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertFalse(result, msg)
+
+    def test_dxf_intersection_3(self):
+        dxf = DXFGeometry('./DXFTests/IntersectTest3.dxf')
+        inters = lineintersect.find_intersections(dxf.verts.vertices)
+        print('These are the intersections:\n{}'.format(inters))
 
 def main():
     print('''Please run the test suite from the MeshMaker.py file by using

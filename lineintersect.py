@@ -118,6 +118,8 @@ class active_vert_dict(SortedDict):
             return {vertex_coords:self.pop(vertex_coords)}
         except KeyError:
             raise KeyError('{} is not an active vertex'.format(vertex_coords))
+        else:
+            return {}
 
     def split_verts(self, v_coords1, v_coords2):
         '''
@@ -125,6 +127,62 @@ class active_vert_dict(SortedDict):
         by at least one other vertex.
         '''
         self.split_lines.update({v_coords1:v_coords2, v_coords2:v_coords1})
+
+class intersection_event(object):
+    '''
+    An means of recording the information about an intersection including the
+    coordinates of the lines, the type of intersection, and the results of the
+    counter-clockwise test.
+
+    ATTRIBUTES:
+    line1 (tup)         --  first line endpoints saved as a tuple of two tuples
+    line2 (tup)         --  second line endpoints saved as a tuple of two tuples
+    inter_type (int)    --  the type of intersection that has occured:
+                            1) the lines form a simple intersection with no
+                               three points being colinear
+                            2) two lines share a common end-point
+                            3) a point on one line is colinear with the points
+                               on the other line
+                            4) both lines are colinear and overlap
+    ccw_tests (list)    --  List of the individual tests for chirality. For
+                            example, if two lines are defined as AB and CD, the
+                            list will be results for [ABC, ABD, CDA, CDB]
+                            chirality. If the the points are arragned like
+                            {ABC: ccw, ABD: cw, CDA: cc, CDB: ccw}, the list
+                            will be [1, -1, -1, 1] and it is apparent that the
+                            lines intersect. If any value is zero, that means
+                            that those three points were found to be colinear.
+    inter_coords (tup)  --  coordinates of the intersection between the two
+                            lines
+    '''
+    def __init__(self, line1, line2, tol=1e-06):
+        '''
+        ARUGMENTS:
+        line1 (tup)         --  first line endpoints saved as a tuple of two
+                                tuples
+        line2 (tup)         --  second line endpoints saved as a tuple of two
+                                tuples
+
+        OPTIONAL ARGUMENTS:
+        tol (float)         --  tolerance for lines to intersect
+        '''
+        self.line1 = line1
+        self.line2 = line2
+        intersection_result = intersection(line1, line2, tol)
+        if intersection_result:
+            self.inter_type = intersection_result[0]
+            self.ccw_tests = intersection_result[1]
+            self.intercoords = self.locate_intersection_point()
+        else:
+            raise RuntimeError('No intersection has occured')
+
+    def __repr__(self):
+        return 'IntersectionType{}:{}, {}\n'.format(self.inter_type, self.line1,
+                                                    self.line2)
+
+    def locate_intersection_point(self):
+        '''Locates the point at which the two lines intersect'''
+        return None
 
 def distance(point1, point2):
     '''Calculates the distance between two points'''
@@ -369,18 +427,21 @@ def find_intersections(vertices, tol=1e-06):
 
             # Did adding this vertex split an existing line?
             loc = active_verts.index(vertex_coords)
-            pred_coord = active_verts.iloc[loc-1]
-            succ_coord = active_verts.iloc[loc+1]
-
-            # Check whether new vertex splits two connected active vertices
-            if pred_coord in active_verts[succ_coord].connections:
-                # Consistency check
-                if succ_coord not in active_verts[pred_coord].connections:
-                    msg = '''FATAL ERROR: vertex {} shows connection with {}
-                             but not visa versa'''.format(succ_coord, pred_coord)
-                    raise RuntimeError(msg)
-                # Line has been split, add to dict of split lines
-                active_verts.split_verts(pred_coord, succ_cord)
+            pred_loc_v = loc - 1
+            succ_loc_v = loc + 1
+            # Make sure a predecessor and successor actually exist
+            if pred_loc_v >= 0 and succ_loc_v < len(active_verts):
+                pred_coord = active_verts.iloc[pred_loc_v]
+                succ_coord = active_verts.iloc[pred_loc_v]
+                # Check whether new vertex splits two connected active vertices
+                if pred_coord in active_verts[succ_coord].connections:
+                    # Consistency check
+                    if succ_coord not in active_verts[pred_coord].connections:
+                        msg = '''FATAL ERROR: vertex {} shows connection with {}
+                                 but not visa versa'''.format(succ_coord, pred_coord)
+                        raise RuntimeError(msg)
+                    # Line has been split, add to dict of split lines
+                    active_verts.split_verts(pred_coord, succ_cord)
 
             # Now loop through the connections of the new vertex (all of which
             #  themselves must be new)
@@ -398,23 +459,23 @@ def find_intersections(vertices, tol=1e-06):
                 active_verts.update({con:active_vertex(sorted_verts[con])})
 
                 # Index the vertex and connection
-                vert_loc = active.verts.index(vertex_coords)
+                vert_loc = active_verts.index(vertex_coords)
                 con_loc = active_verts.index(con)
 
-                # Identify predecessor and successor indices
+                # Identify predecessor and successor indices surrounding line
                 if vert_loc < con_loc:
-                    pred_loc = vert_loc - 1
-                    succ_loc = con_loc + 1
+                    pred_loc_line = vert_loc - 1
+                    succ_loc_line = con_loc + 1
                 else:
-                    pred_loc = con_loc - 1
-                    succ_loc = vert_loc + 1
+                    pred_loc_line = con_loc - 1
+                    succ_loc_line = vert_loc + 1
 
                 # Is this connection already split?
                 if abs(con_loc - vert_loc) > 1:
                     # Yes this line is split upon being added
                     active_verts.split_verts(vert_loc, con_loc)
                     # Loop through vertices lying between line endpoints
-                    internal_points = active_verts.islice(pred_loc + 2, succ_loc - 1)
+                    internal_points = active_verts.islice(pred_loc_line + 2, succ_loc_line - 1)
                     for i_pt_coords in internal_points:
                         # Loop through connections on each internal vertex
                         for i_pt_con in active_verts[i_pt_coords].connections:
@@ -424,29 +485,39 @@ def find_intersections(vertices, tol=1e-06):
                                 # this connection on the internal point
                                 line1 = (vertex_coords, con)
                                 line2 = (i_pt_coords, i_pt_con)
-                                result = intersection(line1, line2, tol)
-                                # Will not append if None is returned
-                                if result:
-                                    intersection_list.append((line1, line2), result)
+                                try:
+                                    result = intersection_event(line1, line2, tol)
+                                except RuntimeError:
+                                    pass
+                                else:
+                                    intersection_list.append(result)
 
                 # Now look at the predecessor to the newly inserted line segment
-                pred_coords = active_verts.iloc[pred_loc]
-                # Loop through connections
-                for pred_con in active_verts[pred_coords].connections:
-                    line1 = (vertex_coords, con)
-                    line2 = (pred_coords, pred_con)
-                    result = intersection(line1, line2, tol)
-                    if result:
-                        intersection_list.append((line1, line2), result)
+                if pred_loc_line >= 0:
+                    pred_coords = active_verts.iloc[pred_loc_line]
+                    # Loop through connections
+                    for pred_con in active_verts[pred_coords].connections:
+                        line1 = (vertex_coords, con)
+                        line2 = (pred_coords, pred_con)
+                        try:
+                            result = intersection_event(line1, line2, tol)
+                        except RuntimeError:
+                            pass
+                        else:
+                            intersection_list.append(result)
 
                 # Find intersections with the successor now
-                succ_coords = active_verts.iloc[suc_loc]
-                for succ_con in active_verts[succ_coords].connections:
-                    line1 = (vertex_coords, con)
-                    line2 = (succ_coords, succ_con)
-                    result = intersection(line1, line2, tol)
-                    if result:
-                        intersection_list.append((line1, line2), result)
+                if succ_loc_line < len(active_verts):
+                    succ_coords = active_verts.iloc[succ_loc_line]
+                    for succ_con in active_verts[succ_coords].connections:
+                        line1 = (vertex_coords, con)
+                        line2 = (succ_coords, succ_con)
+                        try:
+                            result = intersection_event(line1, line2, tol)
+                        except RuntimeError:
+                            pass
+                        else:
+                            intersection_list.append(result)
 
                 # Look through connections of removed vertices and find
                 #  intersections
@@ -454,6 +525,11 @@ def find_intersections(vertices, tol=1e-06):
                     for rem_vert_con in rem_vertex.connections:
                         line1 = (vertex_coords, con)
                         line2 = (rem_vert_coords, rem_vert_con)
-                        result = intersection(line1, line2, tol)
-                        if result:
-                            intersection_list.append((line1, line2), result)
+                        try:
+                            result = intersection_event(line1, line2, tol)
+                        except RuntimeError:
+                            pass
+                        else:
+                            intersection_list.append(result)
+
+    return intersection_list
