@@ -5,6 +5,7 @@ Example for the usage of the DXFGeometry object within python
 from __future__ import print_function
 import numpy as np
 import DXFtoSegments
+import lineintersect
 from matplotlib import pyplot as plt
 
 
@@ -21,7 +22,10 @@ dxf2 = dxf_objects[1]
 dxf3 = dxf_objects[2]
 dxf4 = dxf_objects[3]
 
-clamshell = DXFtoSegments.DXFGeometry('./DXFTests/DXFTest_Clamshellv5.dxf')
+ITest3 = DXFtoSegments.DXFGeometry('./DXFTests/IntersectTest3.dxf')
 
-clamshell.display()
+for seg in ITest3.segments:
+    print(seg)
+
+ITest3.display()
 plt.show()

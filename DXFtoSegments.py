@@ -142,7 +142,8 @@ class VertexList():
 
     DEVELOPER NOTES:
     Is the coordinates set even relevant? Consider checking the dictionary prior
-    to any addition and using that instead.
+    to any addition and using that instead. This would also allow the use of an
+    inheritence so that the VertexList could behave as a VertexDict.
 
     ATTRIBUTES:
     coordinates (set)       --  A list of all vertex coordinates. Coordinates

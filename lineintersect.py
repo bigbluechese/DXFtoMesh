@@ -6,6 +6,7 @@ lines up into segments such that no lines intersect and instead only share
 end points
 '''
 
+from __future__ import print_function
 import math
 from sortedcontainers import SortedDict
 
@@ -95,7 +96,7 @@ class active_vert_dict(SortedDict):
         self.split_lines = {}
 
     def __repr__(self):
-        return SortedDict.__repr__()
+        return SortedDict.__repr__(self)
 
     def request_removal(self, vertex_coords):
         '''
@@ -137,7 +138,7 @@ class intersection_event(object):
     ATTRIBUTES:
     line1 (tup)         --  first line endpoints saved as a tuple of two tuples
     line2 (tup)         --  second line endpoints saved as a tuple of two tuples
-    inter_type (int)    --  the type of intersection that has occured:
+    type (int)          --  the type of intersection that has occured:
                             1) the lines form a simple intersection with no
                                three points being colinear
                             2) two lines share a common end-point
@@ -166,19 +167,32 @@ class intersection_event(object):
         OPTIONAL ARGUMENTS:
         tol (float)         --  tolerance for lines to intersect
         '''
-        self.line1 = line1
-        self.line2 = line2
+        self.lines = (line1, line2)
         intersection_result = intersection(line1, line2, tol)
         if intersection_result:
-            self.inter_type = intersection_result[0]
+            self.type = intersection_result[0]
             self.ccw_tests = intersection_result[1]
             self.intercoords = self.locate_intersection_point()
         else:
             raise RuntimeError('No intersection has occured')
 
     def __repr__(self):
-        return 'IntersectionType{}:{}, {}\n'.format(self.inter_type, self.line1,
-                                                    self.line2)
+        return 'IntersectionType{}:{}, {}\n'.format(self.type, *self.lines)
+
+    def __eq__(self, other):
+        '''
+        Two instances are equal if their types are equal and if they contain
+        '''
+        same_type = self.type == other.type
+        try:
+            same_lines1 = self.lines[0] in other.lines or tuple(reversed(self.lines[0])) in other.lines
+            same_lines2 = self.lines[1] in other.lines or tuple(reversed(self.lines[1])) in other.lines
+        except TypeError:
+            return False
+        except AttributeError:
+            return False
+        else:
+            return (same_type and same_lines1 and same_lines2)
 
     def locate_intersection_point(self):
         '''Locates the point at which the two lines intersect'''
@@ -216,7 +230,7 @@ def check_ccw(A, B, C, tol=1e-06):
     test = (C[1] - A[1])*(B[0] - A[0]) - (B[1] - A[1])*(C[0] - A[0])
 
     # Check for colinearity within worst-case position (NOT slope) tolerance 
-    if abs(test) <= tol*(B[0] - A[0] + B[1] - A[1]):
+    if abs(test) <= tol*abs((B[0] - A[0] + B[1] - A[1])):
         return 0
     # Check for counter-clockwise
     elif test >= 0:
@@ -386,6 +400,18 @@ def find_intersections(vertices, tol=1e-06):
     prev_vertex_pos = None
     intersection_list = []
 
+    def test_for_intersection_event(i_list, line1, line2, tol):
+        try:
+            result = intersection_event(line1, line2, tol)
+        except RuntimeError:
+            # RuntimeError is thrown if no intersection occurs
+            pass
+        else:
+            # Check whether the intersection event has already been reported
+            if result not in i_list:
+                i_list.append(result)
+
+
     # Sweep line algorithm from left to right
     for vertex_coords, vertex in sorted_verts.iteritems():
 
@@ -485,12 +511,8 @@ def find_intersections(vertices, tol=1e-06):
                                 # this connection on the internal point
                                 line1 = (vertex_coords, con)
                                 line2 = (i_pt_coords, i_pt_con)
-                                try:
-                                    result = intersection_event(line1, line2, tol)
-                                except RuntimeError:
-                                    pass
-                                else:
-                                    intersection_list.append(result)
+                                test_for_intersection_event(intersection_list,
+                                                            line1, line2, tol)
 
                 # Now look at the predecessor to the newly inserted line segment
                 if pred_loc_line >= 0:
@@ -499,12 +521,8 @@ def find_intersections(vertices, tol=1e-06):
                     for pred_con in active_verts[pred_coords].connections:
                         line1 = (vertex_coords, con)
                         line2 = (pred_coords, pred_con)
-                        try:
-                            result = intersection_event(line1, line2, tol)
-                        except RuntimeError:
-                            pass
-                        else:
-                            intersection_list.append(result)
+                        test_for_intersection_event(intersection_list,
+                                                            line1, line2, tol)
 
                 # Find intersections with the successor now
                 if succ_loc_line < len(active_verts):
@@ -512,12 +530,8 @@ def find_intersections(vertices, tol=1e-06):
                     for succ_con in active_verts[succ_coords].connections:
                         line1 = (vertex_coords, con)
                         line2 = (succ_coords, succ_con)
-                        try:
-                            result = intersection_event(line1, line2, tol)
-                        except RuntimeError:
-                            pass
-                        else:
-                            intersection_list.append(result)
+                        test_for_intersection_event(intersection_list,
+                                                            line1, line2, tol)
 
                 # Look through connections of removed vertices and find
                 #  intersections
@@ -525,11 +539,7 @@ def find_intersections(vertices, tol=1e-06):
                     for rem_vert_con in rem_vertex.connections:
                         line1 = (vertex_coords, con)
                         line2 = (rem_vert_coords, rem_vert_con)
-                        try:
-                            result = intersection_event(line1, line2, tol)
-                        except RuntimeError:
-                            pass
-                        else:
-                            intersection_list.append(result)
+                        test_for_intersection_event(intersection_list,
+                                                            line1, line2, tol)
 
     return intersection_list

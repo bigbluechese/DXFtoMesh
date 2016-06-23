@@ -436,12 +436,25 @@ class LineIntersectTests(unittest.TestCase):
                  specified tolerance of {}'''.format(A, B, C, tol)
         self.assertTrue(check, msg)
 
+    def test_intersection_event_reversed(self):
+        '''Reversed intersection event equals forward'''
+        line1 = ((0,0), (1,1))
+        line2 = ((1,0), (0,1))
+        result1 = lineintersect.intersection_event(line1, line2)
+        result2 = lineintersect.intersection_event(line2, line1)
+        check = result1 == result2
+        msg = '''Reversed intersection events aren\'t equal'''
+        self.assertTrue(check, msg)
+
     def test_intersection(self):
         '''Lines intersect simply'''
         line1 = ((0,0), (1,1))
         line2 = ((1,0), (0,1))
         result = lineintersect.intersection(line1, line2)
-        check = result[0] == 1
+        try:
+            check = result[0] == 1
+        except TypeError:
+            self.fail('No intersection found')
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
@@ -458,7 +471,10 @@ class LineIntersectTests(unittest.TestCase):
         line1 = ((0,0), (1,0))
         line2 = ((1,0), (1,1))
         result = lineintersect.intersection(line1, line2)
-        check = result[0] == 2
+        try:
+            check = result[0] == 2
+        except TypeError:
+            self.fail('No intersection found')
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
@@ -468,7 +484,10 @@ class LineIntersectTests(unittest.TestCase):
         line1 = ((0,0),             (1,0))
         line2 = ((1,0+0.99*tol),    (1,1))
         result = lineintersect.intersection(line1, line2, tol=tol)
-        check = result[0] == 2
+        try:
+            check = result[0] == 2
+        except TypeError:
+            self.fail('No intersection found')
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
@@ -477,7 +496,10 @@ class LineIntersectTests(unittest.TestCase):
         line1 = ((0,0),     (0,1))
         line2 = ((0,0.5),   (1,1))
         result = lineintersect.intersection(line1, line2)
-        check =  result[0] == 3
+        try:
+            check =  result[0] == 3
+        except TypeError:
+            self.fail('No intersection found')
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
@@ -487,7 +509,10 @@ class LineIntersectTests(unittest.TestCase):
         line1 = ((0,0),     (0,1))
         line2 = ((0+0.99*tol,0.5),   (1,1))
         result = lineintersect.intersection(line1, line2, tol=tol)
-        check = result[0] == 3
+        try:
+            check = result[0] == 3
+        except TypeError:
+            self.fail('No intersection found')
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
@@ -504,17 +529,23 @@ class LineIntersectTests(unittest.TestCase):
         line1 = ((0,0), (1,1))
         line2 = ((-1,-1), (2, 2))
         result = lineintersect.intersection(line1, line2)
-        check = result[0] == 4
+        try:
+            check = result[0] == 4
+        except TypeError:
+            self.fail('No intersection found')
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
     def test_intersection_4_tol(self):
         '''Two lines are colinear within tolerance'''
         tol = 1e-05
-        line1 = ((0,0+tol), (1,1+tol))
+        line1 = ((0,0+0.99*tol), (1,1))
         line2 = ((-1,-1), (2, 2))
         result = lineintersect.intersection(line1, line2, tol=tol)
-        check = result[0] == 4
+        try:
+            check = result[0] == 4
+        except TypeError:
+            self.fail('No intersection found')
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertTrue(check, msg)
 
@@ -529,7 +560,9 @@ class LineIntersectTests(unittest.TestCase):
     def test_dxf_intersection_3(self):
         dxf = DXFGeometry('./DXFTests/IntersectTest3.dxf')
         inters = lineintersect.find_intersections(dxf.verts.vertices)
-        print('These are the intersections:\n{}'.format(inters))
+        check = [i.type for i in inters] == [2, 1, 4]
+        msg = '''Intersections are incorrect for test'''
+        self.assertTrue(check, msg)
 
 def main():
     print('''Please run the test suite from the MeshMaker.py file by using
