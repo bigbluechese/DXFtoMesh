@@ -419,7 +419,7 @@ class DXFGeometry():
 
     def turn_on_verbose(self):
         '''Turns on verbose printing'''
-        self.vprint = lambda *args: print(args) # Standard print function
+        self.vprint = lambda *args: print(*args) # Standard print function
 
     def turn_off_verbose(self):
         '''Turns off verbose printing'''

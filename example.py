@@ -22,10 +22,8 @@ dxf2 = dxf_objects[1]
 dxf3 = dxf_objects[2]
 dxf4 = dxf_objects[3]
 
-ITest3 = DXFtoSegments.DXFGeometry('./DXFTests/IntersectTest3.dxf')
+ITest2 = DXFtoSegments.DXFGeometry('./DXFTests/IntersectTest2.dxf')
+intersections = lineintersect.find_intersections(ITest2.verts.vertices, verbose=True, tol=0.3)
 
-for seg in ITest3.segments:
-    print(seg)
-
-ITest3.display()
-plt.show()
+# ITest2.display()
+# plt.show()

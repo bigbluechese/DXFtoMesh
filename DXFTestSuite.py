@@ -557,7 +557,24 @@ class LineIntersectTests(unittest.TestCase):
         msg = '''Output of intersection function: {}'''.format(result)
         self.assertFalse(result, msg)
 
+    def test_dxf_intersection_1(self):
+        '''IntersectTest1.dxf test'''
+        dxf = DXFGeometry('./DXFTests/IntersectTest1.dxf')
+        inters = lineintersect.find_intersections(dxf.verts.vertices, tol=0.6)
+        print('IntersectTest1.dxf intersections:')
+        for k, i in enumerate(inters):
+            print('{} - Type: {} {} {}'.format(k+1, i.type, i.lines[0], i.lines[1]))
+
+    def test_dxf_intersection_2(self):
+        '''IntersectTest2.dxf test'''
+        dxf = DXFGeometry('./DXFTests/IntersectTest2.dxf')
+        inters = lineintersect.find_intersections(dxf.verts.vertices, tol=.05)
+        print('IntersectTest2.dxf intersections:')
+        for k, i in enumerate(inters):
+            print('{} - Type: {} {} {}'.format(k+1, i.type, i.lines[0], i.lines[1]))
+
     def test_dxf_intersection_3(self):
+        '''IntersectTest3.dxf test'''
         dxf = DXFGeometry('./DXFTests/IntersectTest3.dxf')
         inters = lineintersect.find_intersections(dxf.verts.vertices)
         check = [i.type for i in inters] == [2, 1, 4]
