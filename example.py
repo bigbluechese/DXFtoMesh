@@ -23,7 +23,7 @@ dxf3 = dxf_objects[2]
 dxf4 = dxf_objects[3]
 
 ITest2 = DXFtoSegments.DXFGeometry('./DXFTests/IntersectTest2.dxf')
-intersections = lineintersect.find_intersections(ITest2.verts.vertices, verbose=True, tol=0.3)
+intersections = lineintersect.find_intersections(ITest2.verts.vertices, verbose=True, tol=0.025)
 
 # ITest2.display()
 # plt.show()
