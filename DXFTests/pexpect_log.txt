@@ -1,0 +1,891 @@
+Cats2D 4.12.02 (Crystallization and Transport Simulator)
+Copyright 1992-2014 Andrew Yeckel and Ralph T. Goodwin
+File 'flow.mshc' does not exist. 
+Try a new name? [y/N]: N
+Y
+N
+
+Begin session with mesh generator? [Y/n]: Y
+======================================================================================
+                              * M E S H   D R I V E R * 
+======================================================================================
+
+Enter the Number of Regions, or 0 for array >= 0: 14
+14
+
+Which region borders the SOUTH Side of Region 1? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 1? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 2
+2
+
+Which side of Region 2? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 1? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 4
+4
+
+Which side of Region 4? [s,e,n,w] w
+w
+
+Which region borders the WEST  Side of Region 1? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the SOUTH Side of Region 2? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 2? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 5
+5
+
+Which side of Region 5? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 2? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 3
+3
+
+Which side of Region 3? [s,e,n,w] w
+w
+
+Which region borders the SOUTH Side of Region 3? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 5
+5
+
+Which side of Region 5? [s,e,n,w] n
+n
+
+Which region borders the EAST  Side of Region 3? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 7
+7
+
+Which side of Region 7? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 3? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 4
+4
+
+Which side of Region 4? [s,e,n,w] s
+s
+
+Which region borders the EAST  Side of Region 4? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 12
+12
+
+Which side of Region 12? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 4? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the SOUTH Side of Region 5? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 5? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 6
+6
+
+Which side of Region 6? [s,e,n,w] w
+w
+
+Which region borders the SOUTH Side of Region 6? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 6? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 9
+9
+
+Which side of Region 9? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 6? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 7
+7
+
+Which side of Region 7? [s,e,n,w] s
+s
+
+Which region borders the EAST  Side of Region 7? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 8
+8
+
+Which side of Region 8? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 7? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 12
+12
+
+Which side of Region 12? [s,e,n,w] s
+s
+
+Which region borders the SOUTH Side of Region 8? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 9
+9
+
+Which side of Region 9? [s,e,n,w] n
+n
+
+Which region borders the EAST  Side of Region 8? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 11
+11
+
+Which side of Region 11? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 8? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 13
+13
+
+Which side of Region 13? [s,e,n,w] s
+s
+
+Which region borders the SOUTH Side of Region 9? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 9? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 10
+10
+
+Which side of Region 10? [s,e,n,w] w
+w
+
+Which region borders the SOUTH Side of Region 10? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 10? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the NORTH Side of Region 10? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 11
+11
+
+Which side of Region 11? [s,e,n,w] s
+s
+
+Which region borders the EAST  Side of Region 11? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the NORTH Side of Region 11? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 14
+14
+
+Which side of Region 14? [s,e,n,w] s
+s
+
+Which region borders the EAST  Side of Region 12? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 13
+13
+
+Which side of Region 13? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 12? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 13? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 14
+14
+
+Which side of Region 14? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 13? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 14? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the NORTH Side of Region 14? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+======================================================================================
+ Set vertex coordinates for Region 1
+======================================================================================
+
+*** South West corner ***
+
+Enter the x value: 0.0
+0.0
+
+Enter the y value: 0.0
+0.0
+
+*** South East corner ***
+
+Enter the x value: 0.5
+0.5
+
+Enter the y value: 0.0
+0.0
+
+*** North East corner ***
+
+Enter the x value: 1.50577069
+1.50577069
+
+Enter the y value: 0.580681978333
+0.580681978333
+
+*** North West corner ***
+
+Enter the x value: 1.25577069
+1.25577069
+
+Enter the y value: 0.725019545
+0.725019545
+
+======================================================================================
+ Set vertex coordinates for Region 2
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  5.0000e-01
+South West corner y =  0.0000e+00
+
+*** South East corner ***
+
+Enter the x value: 1.62836404167
+1.62836404167
+
+Enter the y value: 0.0
+0.0
+
+*** North East corner ***
+
+Enter the x value: 1.84915837667
+1.84915837667
+
+Enter the y value: 0.382427005
+0.382427005
+
+*** North West corner ***
+
+North West corner x =  1.5058e+00
+North West corner y =  5.8068e-01
+
+======================================================================================
+ Set vertex coordinates for Region 3
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  1.8492e+00
+South West corner y =  3.8243e-01
+
+*** South East corner ***
+
+Enter the x value: 2.23205080833
+2.23205080833
+
+Enter the y value: 0.5
+0.5
+
+*** North East corner ***
+
+Enter the x value: 2.23205080833
+2.23205080833
+
+Enter the y value: 1.0
+1.0
+
+*** North West corner ***
+
+North West corner x =  1.5058e+00
+North West corner y =  5.8068e-01
+
+======================================================================================
+ Set vertex coordinates for Region 4
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  1.5058e+00
+South West corner y =  5.8068e-01
+
+*** South East corner ***
+
+South East corner x =  2.2321e+00
+South East corner y =  1.0000e+00
+
+*** North East corner ***
+
+Enter the x value: 2.16506351
+2.16506351
+
+Enter the y value: 1.25
+1.25
+
+*** North West corner ***
+
+North West corner x =  1.2558e+00
+North West corner y =  7.2502e-01
+
+======================================================================================
+ Set vertex coordinates for Region 5
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  1.6284e+00
+South West corner y =  0.0000e+00
+
+*** South East corner ***
+
+Enter the x value: 2.23205080833
+2.23205080833
+
+Enter the y value: 0.0
+0.0
+
+*** North East corner ***
+
+North East corner x =  2.2321e+00
+North East corner y =  5.0000e-01
+
+*** North West corner ***
+
+North West corner x =  1.8492e+00
+North West corner y =  3.8243e-01
+
+======================================================================================
+ Set vertex coordinates for Region 6
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  2.2321e+00
+South West corner y =  0.0000e+00
+
+*** South East corner ***
+
+Enter the x value: 3.08428448167
+3.08428448167
+
+Enter the y value: 0.0
+0.0
+
+*** North East corner ***
+
+Enter the x value: 3.08428448167
+3.08428448167
+
+Enter the y value: 0.5
+0.5
+
+*** North West corner ***
+
+North West corner x =  2.2321e+00
+North West corner y =  5.0000e-01
+
+======================================================================================
+ Set vertex coordinates for Region 7
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  2.2321e+00
+South West corner y =  5.0000e-01
+
+*** South East corner ***
+
+South East corner x =  3.0843e+00
+South East corner y =  5.0000e-01
+
+*** North East corner ***
+
+Enter the x value: 3.08428448167
+3.08428448167
+
+Enter the y value: 1.0
+1.0
+
+*** North West corner ***
+
+North West corner x =  2.2321e+00
+North West corner y =  1.0000e+00
+
+======================================================================================
+ Set vertex coordinates for Region 8
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  3.0843e+00
+South West corner y =  5.0000e-01
+
+*** South East corner ***
+
+Enter the x value: 11.0
+11.0
+
+Enter the y value: 0.5
+0.5
+
+*** North East corner ***
+
+Enter the x value: 11.0
+11.0
+
+Enter the y value: 1.0
+1.0
+
+*** North West corner ***
+
+North West corner x =  3.0843e+00
+North West corner y =  1.0000e+00
+
+======================================================================================
+ Set vertex coordinates for Region 9
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  3.0843e+00
+South West corner y =  0.0000e+00
+
+*** South East corner ***
+
+Enter the x value: 11.0
+11.0
+
+Enter the y value: 0.0
+0.0
+
+*** North East corner ***
+
+North East corner x =  1.1000e+01
+North East corner y =  5.0000e-01
+
+*** North West corner ***
+
+North West corner x =  3.0843e+00
+North West corner y =  5.0000e-01
+
+======================================================================================
+ Set vertex coordinates for Region 10
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  1.1000e+01
+South West corner y =  0.0000e+00
+
+*** South East corner ***
+
+Enter the x value: 14.3333333333
+14.3333333333
+
+Enter the y value: 0.0
+0.0
+
+*** North East corner ***
+
+Enter the x value: 14.3333333333
+14.3333333333
+
+Enter the y value: 0.5
+0.5
+
+*** North West corner ***
+
+North West corner x =  1.1000e+01
+North West corner y =  5.0000e-01
+
+======================================================================================
+ Set vertex coordinates for Region 11
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  1.1000e+01
+South West corner y =  5.0000e-01
+
+*** South East corner ***
+
+South East corner x =  1.4333e+01
+South East corner y =  5.0000e-01
+
+*** North East corner ***
+
+Enter the x value: 14.3333333333
+14.3333333333
+
+Enter the y value: 1.0
+1.0
+
+*** North West corner ***
+
+North West corner x =  1.1000e+01
+North West corner y =  1.0000e+00
+
+======================================================================================
+ Set vertex coordinates for Region 12
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  2.2321e+00
+South West corner y =  1.0000e+00
+
+*** South East corner ***
+
+South East corner x =  3.0843e+00
+South East corner y =  1.0000e+00
+
+*** North East corner ***
+
+Enter the x value: 3.08428448167
+3.08428448167
+
+Enter the y value: 1.25
+1.25
+
+*** North West corner ***
+
+North West corner x =  2.1651e+00
+North West corner y =  1.2500e+00
+
+======================================================================================
+ Set vertex coordinates for Region 13
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  3.0843e+00
+South West corner y =  1.0000e+00
+
+*** South East corner ***
+
+South East corner x =  1.1000e+01
+South East corner y =  1.0000e+00
+
+*** North East corner ***
+
+Enter the x value: 11.0
+11.0
+
+Enter the y value: 1.25
+1.25
+
+*** North West corner ***
+
+North West corner x =  3.0843e+00
+North West corner y =  1.2500e+00
+
+======================================================================================
+ Set vertex coordinates for Region 14
+======================================================================================
+
+*** South West corner ***
+
+South West corner x =  1.1000e+01
+South West corner y =  1.0000e+00
+
+*** South East corner ***
+
+South East corner x =  1.4333e+01
+South East corner y =  1.0000e+00
+
+*** North East corner ***
+
+Enter the x value: 14.3333333333
+14.3333333333
+
+Enter the y value: 1.25
+1.25
+
+*** North West corner ***
+
+North West corner x =  1.1000e+01
+North West corner y =  1.2500e+00
+
+======================================================================================
+ Region 1 discretization
+======================================================================================
+
+Enter the Number of NS elements >= 1: 1
+1
+1
+
+Enter the Number of EW elements >= 1: 1
+
+======================================================================================
+ Region 2 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Enter the Number of EW elements >= 1: 1
+1
+1
+
+======================================================================================
+ Region 3 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Enter the Number of EW elements >= 1: 1
+
+======================================================================================
+ Region 4 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Number of EW elements = 1
+
+======================================================================================
+ Region 5 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Number of EW elements = 1
+
+======================================================================================
+ Region 6 discretization
+======================================================================================
+
+Number of NS el1
+ements = 1
+
+Enter the Number of EW elements >= 1: 1
+
+======================================================================================
+ Region 7 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Number of EW elements = 1
+
+======================================================================================
+ Region 8 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Enter the Number of EW elements >= 1: 1
+1
+1
+
+======================================================================================
+ Region 9 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Number of EW elements = 1
+
+======================================================================================
+ Region 10 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Enter the Number of EW elements >= 1: 1
+
+======================================================================================
+ Region 11 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Number of EW elements = 1
+
+======================================================================================
+ Region 12 discretization
+======================================================================================
+
+Number of NS1
+ elements = 1
+
+Number of EW elements = 1
+
+======================================================================================
+ Region 13 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Number of EW elements = 1
+
+======================================================================================
+ Region 14 discretization
+======================================================================================
+
+Number of NS elements = 1
+
+Number of EW elements = 1
+
+======================================================================================
+                              * M E S H   D R I V E R *
+======================================================================================
+ 1 Show Discretization                           6 Change Stretching
+ 2 Change Discretization                         7 Define Boundary
+ 3 Show Vertices                                 8 Macro
+ 4 Move Vertex                                   9 Save Mesh File
+ 5 Change Boundary Shape                        10 Quit
+
+Choice: ======================================================================================
+                                Region Discretization
+======================================================================================
+Region    NS        EW
+1         1         1        
+2         1         1        
+3         1         1        
+4         1         1        
+5         1         1        
+6         1         1        
+7         1         1        
+8         1         1        
+9         1         1        
+10        1         1        
+11        1         1        
+12        1         1        
+13        1         1        
+14        1         1        
+
+======================================================================================
+                              * M E S H   D R I V E R *
+======================================================================================
+ 1 Show Discretization                           6 Change Stretching
+ 2 Change Discretization                         7 Define Boundary
+ 3 Show Vertices                                 8 Macro
+ 4 Move Vertex                                   9 Save Mesh File
+ 5 Change Boundary Shape                        10 Quit
+
+Choice [1]: Quit
+Quit
+
+Save changes to file? [Y/n]: Y
+Y
+Enter the restart file name: flow.mshc
+flow.mshc
+
+Memory Log                 Current    Maximum      Total
+Requests                       267        294        518
+Usage (Mb)                       4          4
+
+An empty control file called flow.ctrl was created
+
+
+                
+14 Elements   71 Nodes   0 Equations   0 Front Width
+
+======================================================================================
+                              * C A T S   2 D   4.12.02 *       Copyright 1992-2014
+======================================================================================
+ 1 File Management                               6 Macro
+ 2 Solver                                        7 Utilities
+ 3 Post Process                                  8 Mesh
+Post Process
+ 4 Solution Analysis                             9 Transient
+ 5 Parameter Manager                            10 Quit
+
+Choice: Post Process
+
+======================================================================================
+                           * P O S T   P R O C E S S O R *
+======================================================================================
+ 1 MeshPlot                                     11 Boundary Analysis
+ 2 Boundary Plot                                12 Define Region
+ 3 Contour Plot                                 13 Close Files
+ 4 Vector Plot                                  14 Options/Environment
+ 5 Line Plot Data                               15 Macro
+ 6 Image Plot                                   16 File Management
+ 7 Scalar Field Critical Points                 17 Nodal Extrema
+ 8 Critical Points                              18 Field Averages
+ 9 Momentum Residual                            19 Displaced mesh
+10 Velocity Divergence                       MeshPlot
+   20 Return
+
+Choice: MeshPlot
+Enter the plot file name: mesh_plot.eps
+mesh_plot.eps
+
+Plot nodes? [y/N]: N
+N
+
+======================================================================================
+                           * P O S T   P R O C E S S O R *
+======================================================================================
+ 1 MeshPlot                                     11 Boundary Analysis
+ 2 Boundary Plot                                12 Define Region
+ 3 Contour Plot                                 13 Close Files
+ 4 Vector Plot                                  14 Options/Environment
+ 5 Line Plot Data                               15 Macro
+ 6 Image Plot                                   16 File Management
+ 7 Scalar Field Critical Points                 17 Nodal Extrema
+ 8 Critical Points                              18 Field Averages
+ 9 Momentum Residual                            19 Displaced mesh
+10 Velocity Divergence                          20 Return
+
+Choice: Return
+Return
+
+======================================================================================
+                              * C A T S   2 D   4.12.02 *       Copyright 1992-2014
+======================================================================================
+ 1 File Management                               6 Macro
+ 2 Solver                                        7 Utilities
+ 3 Post Process                                  8 Mesh
+ 4 Solution Analysis                             9 Transient
+ 5 Parameter Manager                            10 Quit
+
+Choice: Quit

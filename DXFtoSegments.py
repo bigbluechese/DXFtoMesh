@@ -327,6 +327,7 @@ class DXFGeometry(object):
                                     case of arcs/bulges.
     tol (float)                 --  The tolerance to which all positions are
                                     specified (default 1.0e-08)
+    work_dir (str)              --  Working directory for the CrysMAS file
 
     Segments data structure:
     The structure of the segments variable is set of length-2 tuples. Each tuple
@@ -822,8 +823,8 @@ class DXFGeometry(object):
                                 to Cats2D and may or may not be destroyed.
         '''
         # Find the intersections
-        
-        
+
+
         # Create the v_coords list
         v_coords = list(self.verts.coordinates)
         # Now create a dictionary to associate coordinates with an index

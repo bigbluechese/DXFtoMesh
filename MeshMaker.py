@@ -29,6 +29,8 @@ from DXFtoSegments import DXFGeometry
 import CreateStandards
 import unittest
 import argparse
+import matplotlib as mpl
+mpl.use('TkAgg')
 from matplotlib import pyplot as plt
 import os
 import sys
@@ -182,7 +184,7 @@ if args.cats2d:
         plotting_args = {}
     vertex_list,edge_list,bulge_list = dxf.cats2d_convert(len_scale=6)
     mesh = c2d_premesh_v5.C2DMesh(vertex_list, edge_list, **plotting_args)
-    pexpect_c2dmesh_v2.make_c2d_mesh(mesh, args.c2dpath)
+    pexpect_c2dmesh_v2.make_c2d_mesh(mesh, args.c2dpath, working_dir=dxf.work_dir)
 
 # Create a pickle file
 if args.pickle:

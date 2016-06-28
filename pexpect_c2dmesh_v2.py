@@ -8,6 +8,7 @@ import os
 
 '''Jeff's notes:
 Changed "Nodes" to "nodes" for Pexpect
+Added path control for working directory
 '''
 
 if 'darwin' in sys.platform:
@@ -27,18 +28,22 @@ else:
     import pexpect
 
     
-def make_c2d_mesh(mesh, cats2d_path):
+def make_c2d_mesh(mesh, cats2d_path, working_dir='.'):
+    # Get the current working directory (just in case '.' doesn't work)
+    if working_dir == '.':
+        working_dir = os.getcwd()
+
     mesh_filename = 'flow.mshc'
     meshplot_filename = 'mesh_plot.eps'
     
-    if os.path.isfile('./flow.mshc'):
-        overwrite_flowmshc = raw_input('A flow.mshc has been detected in this directory.  Overwrite? (y/n): ')
+    if os.path.isfile(os.path.join(working_dir, 'flow.mshc')):
+        overwrite_flowmshc = raw_input('A flow.mshc has been detected in {}.  Overwrite? (y/n): '.format(working_dir))
         
         if overwrite_flowmshc == 'y':
-            os.remove('./flow.mshc')
+            os.remove(os.path.join(working_dir, 'flow.mshc'))
             
-            if os.path.isfile('./mesh_plot.eps'):
-                os.remove('./mesh_plot.eps')
+            if os.path.isfile(os.path.join(working_dir, 'mesh_plot.eps')):
+                os.remove(os.path.join(working_dir, 'mesh_plot.eps'))
             
         else:
             mesh_filename = raw_input('Input new name for mesh file: ')
@@ -47,6 +52,9 @@ def make_c2d_mesh(mesh, cats2d_path):
     directions = {'SOUTH':'s', 'NORTH':'n', 'EAST':'e', 'WEST':'w', 'South West': 'w', 'North West':'nw', 'South East': 'se', 'North East':'ne'}
     # Begins Cats2D process
     
+    current_dir = os.getcwd()
+    os.chdir(working_dir)
+    print 'working directory: {}'.format(working_dir)
     cats2d = pexpect.spawn(cats2d_path, timeout=3, maxread=4000)
     fout = open('pexpect_log.txt', 'w')
     cats2d.logfile = fout
@@ -209,6 +217,7 @@ def make_c2d_mesh(mesh, cats2d_path):
     cats2d.sendline('Return')
     cats2d.expect('C A T S   2 D')
     cats2d.sendline('Quit')
+    os.chdir(current_dir)
 
     
     fout.close() 

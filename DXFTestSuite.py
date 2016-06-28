@@ -15,6 +15,9 @@ from HelperFunctions import bulge_to_arc, approx, ccw_angle_diff
 import lineintersect
 import pickle
 import filecmp
+import c2d_premesh_v5
+import pexpect_c2dmesh_v2
+import os
 
 class TestVertex(unittest.TestCase):
     '''
@@ -384,9 +387,22 @@ class DXFtoCats2DTests(unittest.TestCase):
     '''Test cases for converting a DXF geometry into a Cats2D mesh'''
     def setUp(self):
         self.dxf4 = DXFGeometry('./DXFTests/DXFTest4.dxf', testing=True)
+        self.ampoule = DXFGeometry('./DXFTests/Ampoule2.dxf')
+        self.directory = './DXFTests/'
+        for f in ['flow.ctrl', 'flow.out', 'flow.mshc', 'mesh_plot.eps', 'memory.dump']:
+            try:
+                os.remove(self.directory+f)
+            except OSError:
+                pass
 
     def tearDown(self):
         self.dxf4 = None
+        self.ampoule = None
+        for f in ['flow.ctrl', 'flow.out', 'flow.mshc', 'mesh_plot.eps', 'memory.dump']:
+            try:
+                os.remove(self.directory+f)
+            except OSError:
+                pass
 
     def test_DXFGeomtoCats(self):
         '''Convert DXF geometry for creating Cats2D mesh'''
@@ -395,6 +411,17 @@ class DXFtoCats2DTests(unittest.TestCase):
         check = self.dxf4.cats2d_convert(invert_coords=False) == pick_info
         msg = 'Cats2D information for DXFTest4 did not match the saved standard'
         self.assertTrue(check, msg)
+
+    def test_DXFtoCatsMesh(self):
+        standard = './DXFTests/flow.mshc.const'
+        test_file = './DXFTests/flow.mshc'
+        vertex_list,edge_list,bulge_list = self.ampoule.cats2d_convert(invert_coords=True, len_scale=6)
+        mesh = c2d_premesh_v5.C2DMesh(vertex_list, edge_list)
+        cats2d_path = 'cats2d.x'
+        pexpect_c2dmesh_v2.make_c2d_mesh(mesh, cats2d_path, working_dir=self.ampoule.work_dir)
+        check = filecmp.cmp(test_file, standard)
+        msg = 'File information differs between {} and {}'.format(standard, test_file)
+        #self.assertTrue(check, msg)
 
 class DXFtoCrysMASTests(unittest.TestCase):
     '''Test cases for converting a DXF geometry into a CrysMAS .pcs file'''
@@ -412,6 +439,7 @@ class DXFtoCrysMASTests(unittest.TestCase):
         check = filecmp.cmp(test_file, standard)
         msg = 'File information differs between {} and {}'.format(standard, test_file)
         self.assertTrue(check, msg)
+
 
 class LineIntersectTests(unittest.TestCase):
     '''Check for line intersection'''
