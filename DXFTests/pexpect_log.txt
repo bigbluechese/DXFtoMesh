@@ -834,8 +834,8 @@ An empty control file called flow.ctrl was created
  1 File Management                               6 Macro
  2 Solver                                        7 Utilities
  3 Post Process                                  8 Mesh
-Post Process
  4 Solution Analysis                             9 Transient
+Post Process
  5 Parameter Manager                            10 Quit
 
 Choice: Post Process
@@ -852,10 +852,10 @@ Choice: Post Process
  7 Scalar Field Critical Points                 17 Nodal Extrema
  8 Critical Points                              18 Field Averages
  9 Momentum Residual                            19 Displaced mesh
-10 Velocity Divergence                       MeshPlot
-   20 Return
+10 Velocity Divergence                          20 Return
 
 Choice: MeshPlot
+MeshPlot
 Enter the plot file name: mesh_plot.eps
 mesh_plot.eps
 

@@ -156,7 +156,7 @@ if args.dxf_file == 'test':
     # Create new standards if specified
     if args.newstandard:
         print('Creating new standards for tests')
-        CreateStandards.save_standards(num_tests=4)
+        CreateStandards.save_standards(args, num_tests=4)
     else:
         test_suite(verbose=args.verbose, dxf_test=not(args.nodxf))
     # Exit immediately after testing is complete
