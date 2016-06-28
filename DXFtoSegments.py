@@ -13,6 +13,10 @@ individually. This will make it faster to reverse the segments and check them
 because you would only have to reverse the segments you're adding. This would
 mean compiling a list of segments to be added rather than adding them
 individually.
+- Segments maybe should be made into a separate class so that reversing the
+segment list and looking for duplicates can be completely avoided. In this way,
+a reversed segment and a forward segment will be the same and thus wouldn't
+be duplicated in the set.
 '''
 
 from __future__ import print_function
@@ -28,8 +32,9 @@ import pkg_resources
 from matplotlib import pyplot as plt
 from HelperFunctions import angle360, anglespace, approx, bulge_to_arc, \
                             ccw_angle_diff, tuple2_check
+import lineintersect
 
-class Vertex():
+class Vertex(object):
     '''
     A class that contains information about the vertex including its coordinates
     and which other vertexes it is connected to.
@@ -129,7 +134,7 @@ class Vertex():
             raise KeyError('Vertex {} is not connected to {}'.format(vertexID, self.id))
         
 
-class VertexList():
+class VertexList(object):
     '''
     A class that provides two ways of keeping track of vertices. The first 
     way is through a python set that contains the tuples that represent vertex
@@ -301,7 +306,7 @@ class VertexList():
         for vertexID in connections:
             self.connect(v_coords2, vertexID)
 
-class DXFGeometry():
+class DXFGeometry(object):
     '''
     DEVELOPER NOTES:
         - Need to add a method to move a vertex
@@ -713,7 +718,7 @@ class DXFGeometry():
                 continue
         self.segments = pruned_segs
         if not self.testing:
-            print('Reversed segments have been removed from {}'.format(self.dxf_path))
+            self.vprint('Reversed segments have been removed from {}'.format(self.dxf_path))
         return pruned_segs
 
     def move_vertex(self, old_coords, new_coords):
@@ -816,7 +821,10 @@ class DXFGeometry():
                                 Currently, the bulge information is not output
                                 to Cats2D and may or may not be destroyed.
         '''
-        # First create the v_coords list
+        # Find the intersections
+        
+        
+        # Create the v_coords list
         v_coords = list(self.verts.coordinates)
         # Now create a dictionary to associate coordinates with an index
         v_dict = dict(zip(v_coords, range(len(v_coords))))

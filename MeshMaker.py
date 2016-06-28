@@ -33,6 +33,8 @@ from matplotlib import pyplot as plt
 import os
 import sys
 import tarfile
+import c2d_premesh_v5
+import pexpect_c2dmesh_v2
 
 
 def test_suite(verbose=False, dxf_test=True):
@@ -110,6 +112,24 @@ help_string = '''Turn the DXF file into a CrysMAS .pcs mesh file. A file name
 parser.add_argument('--crysmas', nargs='?', metavar='file',
                     const=True, help=help_string)
 
+# Specify whether information should be output to Cats2D and what the length
+#  scale should be for non-dimensionalization
+help_string = '''Turn the DXF file into a Cats2D mesh. The length scale for
+                 non-dimensionalization must also be specified'''
+parser.add_argument('--cats2d', action='store', metavar='len_scale', 
+                    help=help_string)
+
+# Specify the execution name for Cats2D
+help_string = '''Optionally set the path for running Cats2D'''
+parser.add_argument('--c2dpath', action='store', default='cats2d.x',
+                    help=help_string)
+
+# Plot Cats2D regions
+help_string = '''Optionally plot Cats2D regions as they are found. The delay
+                 between plotting events can optionally be specified'''
+parser.add_argument('--c2dplot', action='store', nargs='?', metavar='delay',
+                    const=0.2, help=help_string)
+
 # Specify the units of the DXF file
 help_string = 'Specify the units for the DXF file'
 parser.add_argument('--units', action='store', default='mm', help=help_string)
@@ -153,6 +173,16 @@ if args.crysmas:
     else:
         crys_file = None
     dxf.output_to_crysmas(dxf_units=args.units, f_name=crys_file)
+
+# Create a Cats2D mesh
+if args.cats2d:
+    if args.c2dplot:
+        plotting_args = {'plotting':True, 'plotting_pause':args.c2dplot}
+    else:
+        plotting_args = {}
+    vertex_list,edge_list,bulge_list = dxf.cats2d_convert(len_scale=6)
+    mesh = c2d_premesh_v5.C2DMesh(vertex_list, edge_list, **plotting_args)
+    pexpect_c2dmesh_v2.make_c2d_mesh(mesh, args.c2dpath)
 
 # Create a pickle file
 if args.pickle:

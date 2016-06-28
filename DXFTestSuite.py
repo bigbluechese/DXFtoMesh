@@ -561,17 +561,50 @@ class LineIntersectTests(unittest.TestCase):
         '''IntersectTest1.dxf test'''
         dxf = DXFGeometry('./DXFTests/IntersectTest1.dxf')
         inters = lineintersect.find_intersections(dxf.verts.vertices, tol=0.6)
-        print('IntersectTest1.dxf intersections:')
+        #print('IntersectTest1.dxf intersections:')
+        types = [1, 3, 1, 3, 4]
+        coords = [(((-8.0, -2.0), (12.0, -2.0)),                            ((-10.0, -5.0), (21.17691454, 13.0))),
+                  (((-8.0, 8.0), (12.0, 8.0)),                              ((21.17691454, 13.0), (-10.0, -5.0))),
+                  (((1.5, 3.0), (4.96410162, 1.0)),                         ((-10.0, -5.0), (21.17691454, 13.0))),
+                  (((17.90646664, 11.11180602), (21.17691454, 5.50880909)), ((-10.0, -5.0), (21.17691454, 13.0))),
+                  (((21.17691454, 5.50880909), (22.49452864, 3.25144618)),  ((17.90646664, 11.11180602), (21.17691454, 5.50880909)))]
         for k, i in enumerate(inters):
-            print('{} - Type: {} {} {}'.format(k+1, i.type, i.lines[0], i.lines[1]))
+            check = i.lines == coords[k]
+            msg = 'intersections don\'t match. Standard: {}, Output: {}'.format(coords[k], i.lines)
+            self.assertTrue(check, msg)
+            check = i.type == types[k]
+            msg = 'intersection types don\'t match. Standard: {}, Output: {}'.format(types[k], i.type)
+            self.assertTrue(check, msg)
+            #print('{} - Type: {} {} {}'.format(k+1, i.type, i.lines[0], i.lines[1]))
 
     def test_dxf_intersection_2(self):
         '''IntersectTest2.dxf test'''
         dxf = DXFGeometry('./DXFTests/IntersectTest2.dxf')
         inters = lineintersect.find_intersections(dxf.verts.vertices, tol=.05)
-        print('IntersectTest2.dxf intersections:')
+        #print('IntersectTest2.dxf intersections:')
+        types = [2, 3, 3, 3, 2, 3, 1, 1, 1, 1, 3, 2, 2, 3]
+        coords = [(((-8.0, -16.0), (-8.0, 8.0)),        ((8.0, -16.0), (-8.0, -16.0))),
+                  (((-8.0, -12.0), (8.0, -12.0)),       ((8.0, -16.0), (8.0, 8.0))),
+                  (((-8.0, -12.0), (8.0, -12.0)),       ((-8.0, 8.0), (-8.0, -16.0))),
+                  (((-8.0, 4.0), (8.0, 4.0)),           ((-8.0, 8.0), (-8.0, -16.0))),
+                  (((-8.0, 8.0), (8.0, 8.0)),           ((-8.0, -16.0), (-8.0, 8.0))),
+                  (((-7.98, -4.0), (7.98, -4.0)),       ((-8.0, -16.0), (-8.0, 8.0))),
+                  (((-4.0, 9.0), (11.0, -16.98076211)), ((8.0, -16.0), (8.0, 8.0))),
+                  (((-4.0, 9.0), (11.0, -16.98076211)), ((-7.98, -4.0), (7.98, -4.0))),
+                  (((-4.0, 9.0), (11.0, -16.98076211)), ((-8.0, 4.0), (8.0, 4.0))),
+                  (((-4.0, 9.0), (11.0, -16.98076211)), ((-8.0, 8.0), (8.0, 8.0))),
+                  (((8.0, -16.0), (8.0, 8.0)),          ((-8.0, 4.0), (8.0, 4.0))),
+                  (((8.0, -16.0), (8.0, 8.0)),          ((-8.0, 8.0), (8.0, 8.0))),
+                  (((8.0, -16.0), (8.0, 8.0)),          ((-8.0, -16.0), (8.0, -16.0))),
+                  (((8.0, -16.0), (8.0, 8.0)),          ((-7.98, -4.0), (7.98, -4.0)))]
         for k, i in enumerate(inters):
-            print('{} - Type: {} {} {}'.format(k+1, i.type, i.lines[0], i.lines[1]))
+            check = i.lines == coords[k]
+            msg = 'intersections don\'t match. Standard: {}, Output: {}'.format(coords[k], i.lines)
+            self.assertTrue(check, msg)
+            check = i.type == types[k]
+            msg = 'intersection types don\'t match. Standard: {}, Output: {}'.format(types[k], i.type)
+            self.assertTrue(check, msg)
+            #print('{} - Type: {} {} {}'.format(k+1, i.type, i.lines[0], i.lines[1]))
 
     def test_dxf_intersection_3(self):
         '''IntersectTest3.dxf test'''
@@ -579,6 +612,15 @@ class LineIntersectTests(unittest.TestCase):
         inters = lineintersect.find_intersections(dxf.verts.vertices)
         check = [i.type for i in inters] == [2, 1, 4]
         msg = '''Intersections are incorrect for test'''
+        self.assertTrue(check, msg)
+
+    def test_intersection_point(self):
+        '''Locate intersection point'''
+        line1 = ((0,0), (8, 6))
+        line2 = ((0,6), (8, 0))
+        int_event = lineintersect.intersection_event(line1, line2)
+        check = int_event.intersection_point == (4.0, 3.0)
+        msg = '{} and {} don\'t intersect at (4, 3)'.format(line1, line2)
         self.assertTrue(check, msg)
 
 def main():
