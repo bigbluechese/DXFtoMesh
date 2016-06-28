@@ -86,8 +86,8 @@ s
 
 Which region borders the EAST  Side of Region 4? 
 Enter the Neighbor Id >= 0 and <= 14
-[Default = 0]: 12
 12
+[Default = 0]: 12
 
 Which side of Region 12? [s,e,n,w] w
 w
@@ -835,9 +835,9 @@ An empty control file called flow.ctrl was created
  2 Solver                                        7 Utilities
  3 Post Process                                  8 Mesh
  4 Solution Analysis                             9 Transient
-Post Process
  5 Parameter Manager                            10 Quit
 
+Post Process
 Choice: Post Process
 
 ======================================================================================

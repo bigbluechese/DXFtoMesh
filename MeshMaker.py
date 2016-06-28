@@ -179,7 +179,7 @@ if args.crysmas:
 # Create a Cats2D mesh
 if args.cats2d:
     if args.c2dplot:
-        plotting_args = {'plotting':True, 'plotting_pause':args.c2dplot}
+        plotting_args = {'plotting':True, 'plotting_pause':float(args.c2dplot)}
     else:
         plotting_args = {}
     vertex_list,edge_list,bulge_list = dxf.cats2d_convert(len_scale=6)

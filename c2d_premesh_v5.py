@@ -4,7 +4,7 @@ from math import atan2
 import numpy as np
 from matplotlib.collections import PolyCollection
 import matplotlib as mpl
-mpl.use('TkAgg')
+#mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 import pdb
 import dxfgrabber
@@ -258,7 +258,7 @@ class C2DMesh(object):
             plt.close('all')
             fig, ax = plt.subplots()
             plt.ion()
-            #plt.show()
+            plt.show()
         
         
         self.mark_boundary_edges()
@@ -379,7 +379,7 @@ class C2DMesh(object):
                         ax.set_aspect('equal', 'datalim')
                         plt.draw()
                         plt.pause(self.plotting_pause)
-                        #plt.show()
+                        plt.show()
             
                     print 'Mesh region {} found!'.format(current_mesh_id)
 
