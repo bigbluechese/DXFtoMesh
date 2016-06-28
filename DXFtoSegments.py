@@ -824,6 +824,7 @@ class DXFGeometry(object):
         '''
         # Find the intersections
 
+        # Do something for each type of intersection
 
         # Create the v_coords list
         v_coords = list(self.verts.coordinates)
