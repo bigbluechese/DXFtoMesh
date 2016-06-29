@@ -373,7 +373,7 @@ class C2DMesh(object):
                                 
                         #Make the collection and add it to the plot.
                         coll = PolyCollection(plot_vertices, array=z, edgecolors='000000')
-                        coll = PolyCollection(plot_vertices, array=z, cmap=mpl.cm.Pastel1, edgecolors='000000')
+                        #coll = PolyCollection(plot_vertices, array=z, cmap=mpl.cm.Pastel1, edgecolors='000000')
                         ax.add_collection(coll)
                         ax.autoscale_view()
                         ax.set_aspect('equal', 'datalim')

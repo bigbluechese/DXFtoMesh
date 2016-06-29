@@ -30,7 +30,7 @@ else:
     
 def make_c2d_mesh(mesh, cats2d_path, working_dir='.'):
     # Get the current working directory (just in case '.' doesn't work)
-    if working_dir == '.':
+    if working_dir == '.' or working_dir == '':
         working_dir = os.getcwd()
 
     mesh_filename = 'flow.mshc'

@@ -30,7 +30,7 @@ import CreateStandards
 import unittest
 import argparse
 import matplotlib as mpl
-mpl.use('TkAgg')
+#mpl.use('TkAgg')
 from matplotlib import pyplot as plt
 import os
 import sys
@@ -132,8 +132,15 @@ help_string = '''Optionally plot Cats2D regions as they are found. The delay
 parser.add_argument('--c2dplot', action='store', nargs='?', metavar='delay',
                     const=0.2, help=help_string)
 
+# Don't Flip the x and y coordinates
+help_string = '''Specify that the x and y coordinates shouldn't be flipped for
+                 outputting to Cats2D. Cats2D usually maps x to z and y to r.
+                 Use this option if your DXF is already specified in this way.
+                 Otherwise, the code will flip your coordinates automatically.'''
+parser.add_argument('--noflip', action='store_true', help=help_string)
+
 # Specify the units of the DXF file
-help_string = 'Specify the units for the DXF file'
+help_string = 'Specify the units for the DXF file (default mm)'
 parser.add_argument('--units', action='store', default='mm', help=help_string)
 
 # Pickle the DXFGeometry object
@@ -182,7 +189,8 @@ if args.cats2d:
         plotting_args = {'plotting':True, 'plotting_pause':float(args.c2dplot)}
     else:
         plotting_args = {}
-    vertex_list,edge_list,bulge_list = dxf.cats2d_convert(len_scale=6)
+    vertex_list,edge_list,bulge_list = dxf.cats2d_convert(len_scale=6, 
+                                                invert_coords=(not args.noflip))
     mesh = c2d_premesh_v5.C2DMesh(vertex_list, edge_list, **plotting_args)
     pexpect_c2dmesh_v2.make_c2d_mesh(mesh, args.c2dpath, working_dir=dxf.work_dir)
 

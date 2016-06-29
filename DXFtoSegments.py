@@ -465,13 +465,17 @@ class DXFGeometry(object):
                                     are handled and the last two are ignored.
 
         '''
-        # Check if object passed is a signle entity or not
-        try:
-            dxftype = dxfentities.dxftype
-        except AttributeError: #Collections don't have dxftype attribute
-            entities = dxfentities
+        # Check if another DXFGeometry object was passed
+        if dxfentities.__class__.__name__ == 'DXFGeometry':
+            entities = dxfentities.dxf.entities
         else:
-            entities = [dxfentities] #Make into one-element list for looping
+            # Check if object passed is a signle entity or not
+            try:
+                dxftype = dxfentities.dxftype
+            except AttributeError: #Collections don't have dxftype attribute
+                entities = dxfentities
+            else:
+                entities = [dxfentities] #Make into one-element list for looping
 
         # Loop over entities
         for entity in entities:

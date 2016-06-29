@@ -86,8 +86,8 @@ s
 
 Which region borders the EAST  Side of Region 4? 
 Enter the Neighbor Id >= 0 and <= 14
-12
 [Default = 0]: 12
+12
 
 Which side of Region 12? [s,e,n,w] w
 w
@@ -822,8 +822,6 @@ Memory Log                 Current    Maximum      Total
 Requests                       267        294        518
 Usage (Mb)                       4          4
 
-An empty control file called flow.ctrl was created
-
 
                 
 14 Elements   71 Nodes   0 Equations   0 Front Width
@@ -834,10 +832,10 @@ An empty control file called flow.ctrl was created
  1 File Management                               6 Macro
  2 Solver                                        7 Utilities
  3 Post Process                                  8 Mesh
+Post Process
  4 Solution Analysis                             9 Transient
  5 Parameter Manager                            10 Quit
 
-Post Process
 Choice: Post Process
 
 ======================================================================================
@@ -852,10 +850,10 @@ Choice: Post Process
  7 Scalar Field Critical Points                 17 Nodal Extrema
  8 Critical Points                              18 Field Averages
  9 Momentum Residual                            19 Displaced mesh
-10 Velocity Divergence                          20 Return
+10 Velocity Divergence                       MeshPlot
+   20 Return
 
 Choice: MeshPlot
-MeshPlot
 Enter the plot file name: mesh_plot.eps
 mesh_plot.eps
 
