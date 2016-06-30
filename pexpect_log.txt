@@ -1,0 +1,97 @@
+Cats2D 4.12.02 (Crystallization and Transport Simulator)
+Copyright 1992-2014 Andrew Yeckel and Ralph T. Goodwin
+File 'flow.mshc' does not exist. 
+Try a new name? [y/N]: N
+Y
+N
+
+Begin session with mesh generator? [Y/n]: Y
+======================================================================================
+                              * M E S H   D R I V E R * 
+======================================================================================
+
+Enter the Number of Regions, or 0 for array >= 0: 14
+14
+
+Which region borders the SOUTH Side of Region 1? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 1? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 2
+2
+
+Which side of Region 2? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 1? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 4
+4
+
+Which side of Region 4? [s,e,n,w] w
+w
+
+Which region borders the WEST  Side of Region 1? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the SOUTH Side of Region 2? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 0
+0
+
+Which region borders the EAST  Side of Region 2? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 5
+5
+
+Which side of Region 5? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 2? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 3
+3
+
+Which side of Region 3? [s,e,n,w] w
+w
+
+Which region borders the SOUTH Side of Region 3? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 5
+5
+
+Which side of Region 5? [s,e,n,w] n
+n
+
+Which region borders the EAST  Side of Region 3? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 7
+7
+
+Which side of Region 7? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 3? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 4
+4
+
+Which side of Region 4? [s,e,n,w] s
+s
+
+Which region borders the EAST  Side of Region 4? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 12
+12
+
+Which side of Region 12? [s,e,n,w] w
+w
+
+Which region borders the NORTH Side of Region 4? 
+Enter the Neighbor Id >= 0 and <= 14
+[Default = 0]: 

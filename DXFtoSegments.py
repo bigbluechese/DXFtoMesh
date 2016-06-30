@@ -13,8 +13,13 @@ individually. This will make it faster to reverse the segments and check them
 because you would only have to reverse the segments you're adding. This would
 mean compiling a list of segments to be added rather than adding them
 individually.
+- Segments maybe should be made into a separate class so that reversing the
+segment list and looking for duplicates can be completely avoided. In this way,
+a reversed segment and a forward segment will be the same and thus wouldn't
+be duplicated in the set.
 '''
 
+from __future__ import print_function
 import dxfgrabber
 import argparse
 import re
@@ -27,8 +32,9 @@ import pkg_resources
 from matplotlib import pyplot as plt
 from HelperFunctions import angle360, anglespace, approx, bulge_to_arc, \
                             ccw_angle_diff, tuple2_check
+import lineintersect
 
-class Vertex():
+class Vertex(object):
     '''
     A class that contains information about the vertex including its coordinates
     and which other vertexes it is connected to.
@@ -38,7 +44,7 @@ class Vertex():
     y (float)           --  The y-coordinate of the vertex (required)
     id (tuple)          --  A string ID of the vertex that is the tuple pair of
                             coordinates
-    connected (list)    --  A list of vertex IDs that are connected to this 
+    connections (list)  --  A list of vertex IDs that are connected to this 
                             vertex
 
     Notes:
@@ -53,8 +59,7 @@ class Vertex():
     def __init__(self, coords):
         '''
         ARGUMENTS:
-        x (float)           --  The x-coordinate of the vertex (required)
-        y (float)           --  The y-coordinate of the vertex (required)
+        coords (tuple)      --  The x- and y-coordinates of the vertex
 
         RAISES:
         TypeError           --  if vertex is not a tuple
@@ -68,7 +73,7 @@ class Vertex():
         self.x = coords[0]
         self.y = coords[1]
         self.id = coords
-        self.connected = set([])
+        self.connections = set([])
 
     def __repr__(self):
         return 'Vertex({}, {})'.format(self.x, self.y)
@@ -97,18 +102,18 @@ class Vertex():
         if vertexID == self.id:
             raise RuntimeError('Cannot connect a vertex to itself')
         else:
-            self.connected.add(vertexID)
+            self.connections.add(vertexID)
 
     def discon(self, vertexID):
         '''
-        Removes a vertexID from the set of connected verticies
+        Removes a vertexID from the set of connected vertices
 
         ARGUMENTS:
         vertexID (str)      --  vertexID to disconnect to the current vertex
 
         RAISES:
         KeyError            --  If vertexID is not part of the set of connected
-                                vertecies
+                                vertices
         TypeError           --  If vertexID is not a tuple
         '''
         # Check to make sure the ID is a two-number tuple
@@ -124,37 +129,42 @@ class Vertex():
 
         # Raise error if not connected
         try:
-            self.connected.remove(vertexID)
+            self.connections.remove(vertexID)
         except KeyError:
             raise KeyError('Vertex {} is not connected to {}'.format(vertexID, self.id))
         
 
-class VertexList():
+class VertexList(object):
     '''
-    A class that provides two ways of keeping track of verticies. The first 
+    A class that provides two ways of keeping track of vertices. The first 
     way is through a python set that contains the tuples that represent vertex
     coordinates. The advantage of a set is that its elements must be unique and
-    so you cannot duplicate verticies. The second way is through a dict
+    so you cannot duplicate vertices. The second way is through a dict
     containing the vertex class for each vertex in the geometry. The keys for
     the dict are simple string conversions of the tuple of the vertex
     coordinates. This provides a powerful way to access connectivity information
     about each vertex without looping through lines.
 
+    DEVELOPER NOTES:
+    Is the coordinates set even relevant? Consider checking the dictionary prior
+    to any addition and using that instead. This would also allow the use of an
+    inheritence so that the VertexList could behave as a VertexDict.
+
     ATTRIBUTES:
     coordinates (set)       --  A list of all vertex coordinates. Coordinates
                                 are given as tuples.
-    verticies (dict)        --  A dictionary of all verticies with keys given by
+    vertices (dict)        --  A dictionary of all vertices with keys given by
                                 their tuple coodinates. Each item is a vertex
                                 class with more specific information about the
                                 vertex.
     '''
     def __init__(self):
         self.coordinates = set([]) #set of vertex coordinate tuples
-        self.verticies = {} #dictionary of vertex objects
+        self.vertices = {} #dictionary of vertex objects
 
     def add(self, v_coords):
         '''
-        Adds a vertex to the list of all verticies
+        Adds a vertex to the list of all vertices
 
         ARGUMENTS:
         v_coords (tuple)        --  Tuple pair of coordinates for vertex
@@ -172,7 +182,7 @@ class VertexList():
         # Check if the vertex was added. If it wasn't, that means it's already
         # in the set so it shouldn't be added
         if new_len > initial_len:
-            self.verticies[v_coords] = Vertex(v_coords)
+            self.vertices[v_coords] = Vertex(v_coords)
 
     def connect(self, vertex1, vertex2):
         '''
@@ -192,16 +202,16 @@ class VertexList():
         vertex2 = tuple2_check(vertex2)
 
         try:
-            self.verticies[vertex1].con(vertex2)
+            self.vertices[vertex1].con(vertex2)
         except KeyError as inst:
             raise KeyError('{} is not an existing vertex'.format(vertex1))
         except RuntimeError as inst:
             raise
             
         try:
-            self.verticies[vertex2].con(vertex1)
+            self.vertices[vertex2].con(vertex1)
         except KeyError as inst:
-            self.verticies[vertex1].discon(vertex2)
+            self.vertices[vertex1].discon(vertex2)
             raise KeyError('{} is not an existing vertex'.format(vertex2))
 
     def disconnect(self, vertex1, vertex2):
@@ -223,20 +233,20 @@ class VertexList():
 
         # Remove vertex 2 from list of connections for vertex 1
         try:
-            self.verticies[vertex1].discon(vertex2)
+            self.vertices[vertex1].discon(vertex2)
         except KeyError as inst:
             raise
 
         # Remove vertex 1 from list of connections for vertex 2
         try:
-            self.verticies[vertex2].discon(vertex1)
+            self.vertices[vertex2].discon(vertex1)
         except KeyError:
             raise RuntimeError('''Vertex connection not symmetric: {} does not
                     contain connection info for {}'''.format(vertex2, vertex1))
 
     def remove(self, v_coords):
         '''
-        Removes a given vertex from the set of verticies
+        Removes a given vertex from the set of vertices
 
         ARGUMENTS:
         v_coords (tuple)        --  Tuple of coordinates defining the vertex
@@ -255,14 +265,14 @@ class VertexList():
             raise KeyError('{} is not an existing vertex'.format(v_coords))
 
         # Now figure out the connectivity
-        connections = self.verticies[v_coords].connected
+        connections = self.vertices[v_coords].connections.copy()
 
         # Remove all of the connections between this vertex and others
         for vertexID in connections:
             self.disconnect(v_coords, vertexID)
 
         # Now finally delete the vertex in the dict
-        del self.verticies[v_coords]
+        del self.vertices[v_coords]
 
     def move_vertex(self, v_coords1, v_coords2):
         '''
@@ -282,7 +292,7 @@ class VertexList():
         v_coords2 = tuple2_check(v_coords2)
 
         try:
-            connections = self.verticies[v_coords1].connected
+            connections = self.vertices[v_coords1].connections
         except KeyError:
             raise KeyError('{} is not an existing vertex'.v_coords1)
 
@@ -296,11 +306,14 @@ class VertexList():
         for vertexID in connections:
             self.connect(v_coords2, vertexID)
 
-class DXFGeometry():
+class DXFGeometry(object):
     '''
+    DEVELOPER NOTES:
+        - Need to add a method to move a vertex
+
     Class that first reads a DXF file and then converts the information there
     into a form that is appropriate for making meshes. Specifically, the class
-    will take the DXF file, break it into its vertecies and also into the
+    will take the DXF file, break it into its vertices and also into the
     respective line segements that exist between vertexes. These line segements
     can either be arcs that are defined in a number of different ways or simple
     straight lines between points.
@@ -308,12 +321,13 @@ class DXFGeometry():
     ATTRIBUTES:
     dxf (dxfgrabber obj)        --  DXF file read by dxfgrabber module
     verts (VertexList obj)      --  VertexList class containing information
-                                    about the verticies in the drawing
+                                    about the vertices in the drawing
     segments (set)              --  Set of segments defined by two points
                                     along with additional information in the
                                     case of arcs/bulges.
     tol (float)                 --  The tolerance to which all positions are
                                     specified (default 1.0e-08)
+    work_dir (str)              --  Working directory for the CrysMAS file
 
     Segments data structure:
     The structure of the segments variable is set of length-2 tuples. Each tuple
@@ -362,10 +376,20 @@ class DXFGeometry():
         self.dxf_path = dxf_file
         self.verts = VertexList()
         self.segments = set([])
-        self.verbose = verbose
         self.tol = tol #Rounds coordinates to this tolerance
         self.testing = testing
         no_file = False
+
+        # Turn on/off verbose printing
+        self.__verbose__ = verbose
+        if self.__verbose__:
+            self.turn_on_verbose()
+        else:
+            self.turn_off_verbose()
+
+        # Turn off verbose mode while testing
+        if self.testing:
+            self.turn_off_verbose()
 
         # Extract path information
         self.work_dir, self.dxf_name = os.path.split(os.path.splitext(self.dxf_path)[0])
@@ -396,15 +420,16 @@ class DXFGeometry():
         if version == '0.8.0':
             raise ImportError('dxfgrabber version should not be 0.8.0')
         elif cmp('0.7.5', version) > 0:
-            raise ImportWarning('''dxfgrabber versions later than 0.8.0 have not
-                                been tested... use with caution''')
+            print('''WARNING: dxfgrabber versions later than 0.8.0 have not been
+                     tested... use with caution''')
 
-    def vprint(self, *args):
-        '''Printing function that is responsive to self.verbose'''
-        if self.verbose:
-            for arg in args:
-                print arg,
-            print
+    def turn_on_verbose(self):
+        '''Turns on verbose printing'''
+        self.vprint = lambda *args: print(*args) # Standard print function
+
+    def turn_off_verbose(self):
+        '''Turns off verbose printing'''
+        self.vprint = lambda *args: None # Return nothing
 
     def add_dxf(self, dxf_file):
         '''
@@ -440,13 +465,17 @@ class DXFGeometry():
                                     are handled and the last two are ignored.
 
         '''
-        # Check if object passed is a signle entity or not
-        try:
-            dxftype = dxfentities.dxftype
-        except AttributeError: #Collections don't have dxftype attribute
-            entities = dxfentities
+        # Check if another DXFGeometry object was passed
+        if dxfentities.__class__.__name__ == 'DXFGeometry':
+            entities = dxfentities.dxf.entities
         else:
-            entities = [dxfentities] #Make into one-element list for looping
+            # Check if object passed is a signle entity or not
+            try:
+                dxftype = dxfentities.dxftype
+            except AttributeError: #Collections don't have dxftype attribute
+                entities = dxfentities
+            else:
+                entities = [dxfentities] #Make into one-element list for looping
 
         # Loop over entities
         for entity in entities:
@@ -466,7 +495,7 @@ class DXFGeometry():
     def add_line(self, entity):
         '''
         Converts a DXF line entity (or entitines) to the proper form and adds
-        the information to the list of verticies and to the set of segments
+        the information to the list of vertices and to the set of segments
 
         ARGUMENTS:
         entity (obj)            --  DXF entity from dxfgrabber
@@ -483,7 +512,7 @@ class DXFGeometry():
         start = (approx(entity.start[0], tol=self.tol), approx(entity.start[1], tol=self.tol))
         end = (approx(entity.end[0], tol=self.tol), approx(entity.end[1], tol=self.tol))
 
-        # Add verticies and connect them
+        # Add vertices and connect them
         self.verts.add(start)
         self.verts.add(end)
         self.verts.connect(start, end)
@@ -499,7 +528,7 @@ class DXFGeometry():
     def add_arc(self, entity):
         '''
         Converts a DXF arc entity (or entities) to the proper form and adds the 
-        information to the list of verticies and to the set of segments. Bulge
+        information to the list of vertices and to the set of segments. Bulge
         and arc information is also compiled and computed.
 
         ARGUMENTS:
@@ -527,7 +556,7 @@ class DXFGeometry():
         end = (approx(radius*np.cos(end_angle) + center[0], tol=self.tol), 
                approx(radius*np.sin(end_angle) + center[1], tol=self.tol))
 
-        # Add verticies and connect them
+        # Add vertices and connect them
         self.verts.add(start)
         self.verts.add(end)
         self.verts.connect(start, end)
@@ -653,6 +682,28 @@ class DXFGeometry():
                 if len(self.segments) == initial_len:
                     self.vprint('\tSegment already exists... skipped')
 
+    def reverse_seg(self, seg):
+        '''
+        Reverses a given segment including the bulge information
+        '''
+        # First reverse the segment
+        rev_seg_coords = (seg[0][1], seg[0][0])
+        if seg[1] == ():
+            rev_seg_info = ()
+        else:
+            # Calculate reversed arc/bulge information
+            bulge, start_angle, end_angle, center, radius = seg[1]
+            rev_bulge = -bulge
+            rev_s_angle = end_angle
+            rev_e_angle = start_angle
+            rev_center = center
+            rev_radius = radius
+            rev_seg_info = (rev_bulge, rev_s_angle, rev_e_angle, rev_center,
+                rev_radius)
+        # Create the reversed segment
+        rev_seg = (rev_seg_coords, rev_seg_info)
+        return rev_seg
+
     def rem_reversed(self):
         '''
         Looks at the current set of segments and removes repeat segments that
@@ -663,22 +714,7 @@ class DXFGeometry():
         # Convert segment set to list
         pruned_segs = self.segments.copy()
         for seg in self.segments:
-            # First reverse the segment
-            rev_seg_coords = (seg[0][1], seg[0][0])
-            if seg[1] == ():
-                rev_seg_info = ()
-            else:
-                # Calculate reversed arc/bulge information
-                bulge, start_angle, end_angle, center, radius = seg[1]
-                rev_bulge = -bulge
-                rev_s_angle = end_angle
-                rev_e_angle = start_angle
-                rev_center = center
-                rev_radius = radius
-                rev_seg_info = (rev_bulge, rev_s_angle, rev_e_angle, rev_center,
-                    rev_radius)
-            # Create the reversed segment
-            rev_seg = (rev_seg_coords, rev_seg_info)
+            rev_seg = self.reverse_seg(seg)
             # Check if the reversed segment is in the list of segments
             if rev_seg in pruned_segs:
                 # Remove the non-reversed segment
@@ -687,13 +723,82 @@ class DXFGeometry():
                 continue
         self.segments = pruned_segs
         if not self.testing:
-            print 'Reversed segments have been removed from {}'.format(self.dxf_path)
+            self.vprint('Reversed segments have been removed from {}'.format(self.dxf_path))
         return pruned_segs
+
+    def move_vertex(self, old_coords, new_coords):
+        '''
+        Moves a vertex belonging to a line. At the moment, only straight lines
+        are supported.
+
+        ARGUMENTS:
+        old_coords (tuple)  --  Coordinates of the old vertex expressed as a
+                                length-2 tuple
+        new_coords (tuple)  --  Coordiantes of the old vertex expressed as arc
+                                length-2 tuple
+
+        RAISES:
+        RuntimeError        --  if a line segment either appears to not exist or
+                                if the segment contains bulge information
+
+        DEVELOPER NOTES:
+        If support for bulges were to be added, one way would be to add a
+        segments dict where the vertices were used as a key and the information
+        was a tuple of bulge information entries. More than one entry could
+        exist for a given set of vertices since one can have multiple lines
+        between two points with different bulge values. This would allow bulge
+        information to be modified by moving the vertex although it would be
+        tricky to rationally choose how to modify the bulge information.
+        '''
+        # Make sure the old_coords are actually a vertex
+        try:
+            old_vert = self.verts.vertices[old_coords]
+        except KeyError:
+            print('Vertex cannot be moved because the vertex does not exist!')
+            raise
+
+        # Now find segment information that corresponds to this vertex
+        old_lines = []
+        new_lines = []
+        for vert in old_vert.connections:
+            if ((old_coords, vert), ()) in self.segments:
+                old_lines.append(((old_coords, vert), ()))
+                new_lines.append(((new_coords, vert), ()))
+            elif ((vert, old_coords), ()) in self.segments:
+                old_lines.append(((vert, old_coords), ()))
+                new_lines.append(((vert, new_coords), ()))
+            else:
+                raise RuntimeError('''The segment ({}, {}) contains bulge
+                        information. Segments with bulges cannot be moved at this
+                        time.'''.format(old_coords, vert))
+
+        # Move the vertex in the vertex list
+        self.verts.move_vertex(old_coords, new_coords)
+        # Recreate the line segments
+        for old, new in zip(old_lines, new_lines):
+            self.segments.remove(old)
+            self.segments.add(new)
+
+    def find_intersections(self):
+        '''
+        Finds the intersections between line segments. These intersections can
+        be of four forms:
+        1) two lines simply intersect and have different slopes
+        2) two lines share a common end-point
+        3) one endpoint lies on the other line
+        4) both lines are colinear and overlap
+
+        or no intersection occurs. A sweep-line algorithm is used to first order
+        the vertices and then sweep through the verticies in order from left to
+        right. If a right-endpoint of a line causes that line to switch
+        positions in the currently active lines (ordered from bottom to top),
+        an intersection has likely occured and must be tested for.
+        '''
+        pass
 
     def cats2d_convert(self, invert_coords=True, len_scale=None):
         '''
         Converts the data to a form that can be used in creating a Cats2D mesh.
-        Bulge information is also passed but
 
         OPTIONAL ARGUMENTS:
         invert_coords (bool)--  When evalatues to True, the coordinates for
@@ -710,13 +815,22 @@ class DXFGeometry():
         v_coords (list)     --  List of vertex coordinates where each coordinate
                                 is given by a tuple.
         edges (list)        --  A list of tuples where each tuple contains two
-                                indicies identifying which verticies in v_coords
+                                indicies identifying which vertices in v_coords
                                 make up the edge
         bulges (list)       --  If any edges have bulges, the bulge information
                                 is saved and indexed to the edges in the form
                                 (edge_index, (bulge_info)).
+
+        WARNINGS:
+        UserWarning         --  if bulge information is passed to this function.
+                                Currently, the bulge information is not output
+                                to Cats2D and may or may not be destroyed.
         '''
-        # First create the v_coords list
+        # Find the intersections
+
+        # Do something for each type of intersection
+
+        # Create the v_coords list
         v_coords = list(self.verts.coordinates)
         # Now create a dictionary to associate coordinates with an index
         v_dict = dict(zip(v_coords, range(len(v_coords))))
@@ -733,6 +847,8 @@ class DXFGeometry():
             if seg[1]:
                 i = len(edges) - 1 #Find edge index
                 bulges.append((i, seg[1]))
+                print('''WARNING: Segment {} contains a bulge.\n\tBulge Info: {}
+                      '''.format(seg[0], seg[1]))
 
         # Swap the x and y coordinates by default
         if invert_coords:
@@ -804,7 +920,7 @@ class DXFGeometry():
         # Create dictionary for matching vertex coordinates to indicies
         v_dict = {}
 
-        # Loop through verticies, assign indicies, and write to file
+        # Loop through vertices, assign indicies, and write to file
         for i, v in enumerate(self.verts.coordinates):
             v_scaled = (v[0]*scale_factor, v[1]*scale_factor)
             v_dict[v_scaled] = i+1 #Index is CrysMAS (i.e. starts at 1)
@@ -815,7 +931,7 @@ class DXFGeometry():
         line = '{} lines\n'.format(num_lines)
         crys_file.write(line)
 
-        # Loop through segments, assign verticies, and look up verticies
+        # Loop through segments, assign vertices, and look up vertices
         for i, seg in enumerate(self.segments):
             start_coords = (seg[0][0][0]*scale_factor, seg[0][0][1]*scale_factor)
             end_coords = (seg[0][1][0]*scale_factor, seg[0][1][1]*scale_factor)
@@ -827,7 +943,7 @@ class DXFGeometry():
         # Close the file
         crys_file.close()
 
-        print 'Saving to CrysMAS geometry {}...'.format(crys_path)
+        print('Saving to CrysMAS geometry {}...'.format(crys_path))
 
 
     def display(self):
@@ -885,7 +1001,7 @@ class DXFGeometry():
         plt.axis('scaled')
         plt.draw() # Plot must be shown to be visible so after calling the
 
-        print 'Geometry for {} is queued for display...'.format(self.dxf_path)
+        print('Geometry for {} is queued for display...'.format(self.dxf_path))
 
     def pickle(self, f_name=None):
         '''
@@ -900,10 +1016,10 @@ class DXFGeometry():
         fo.close()
 
 def main():
-    print '''This file contains classes that are used to create a DXFGeometry
+    print('''This file contains classes that are used to create a DXFGeometry
     object from a DXF file for then creating a computational mesh in either
     CrysMAS or Cats2D. Please run the MeshMaker.py file for usage
-    information'''
+    information''')
 
 # Check whether the script is being excuted by itself
 if __name__=="__main__":

@@ -7,3 +7,13 @@
 
 *.dwl2
 
+
+DXFTests/flow.mshc
+
+DXFTests/flow.ctrl
+
+DXFTests/flow.out
+
+*.dump
+
+DXFTests/mesh_plot.eps

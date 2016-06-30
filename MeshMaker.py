@@ -8,6 +8,7 @@ Requirements:
 - Python 2.7x
 - dxfgrabber 0.7.5 (0.8.0 is incompatible without patch)
 - SciPy Stack
+- sortedcontainers 1.5.3
 - DXFtoSegments.py
 - HelperFunctions.py
 
@@ -22,15 +23,21 @@ found by running this script with the '-h' flag afterwards specificaly,
 './DXFtoSegments.py -h'. 
 '''
 
+from __future__ import print_function
 import DXFTestSuite
 from DXFtoSegments import DXFGeometry
 import CreateStandards
 import unittest
 import argparse
+import matplotlib as mpl
+#mpl.use('TkAgg')
 from matplotlib import pyplot as plt
 import os
 import sys
 import tarfile
+import c2d_premesh_v5
+import pexpect_c2dmesh_v2
+
 
 def test_suite(verbose=False, dxf_test=True):
     '''Runs the test suite'''
@@ -41,6 +48,7 @@ def test_suite(verbose=False, dxf_test=True):
     suites = []
     suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertex))
     suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestVertexList))
+    suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.LineIntersectTests))
     if dxf_test:
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.TestDXFGeometry))
         suites.append(unittest.TestLoader().loadTestsFromTestCase(DXFTestSuite.DXFTestCases))
@@ -77,9 +85,9 @@ def make_dist():
             dirs[:] = [d for d in dirs if not d[0] == '.']
             # Add these files to the tar file
             for f in files:
-                print 'adding', os.path.join(root, f)
+                print('adding', os.path.join(root, f))
                 tar.add(os.path.join(root, f))
-        print 'packaging code as {} at {}'.format(tar_name, root_path)
+        print('packaging code as {} at {}'.format(tar_name, root_path))
         tar.close()
     os.chdir('./DXFtoMesh')
 
@@ -106,8 +114,33 @@ help_string = '''Turn the DXF file into a CrysMAS .pcs mesh file. A file name
 parser.add_argument('--crysmas', nargs='?', metavar='file',
                     const=True, help=help_string)
 
+# Specify whether information should be output to Cats2D and what the length
+#  scale should be for non-dimensionalization
+help_string = '''Turn the DXF file into a Cats2D mesh. The length scale for
+                 non-dimensionalization must also be specified'''
+parser.add_argument('--cats2d', action='store', metavar='len_scale', 
+                    help=help_string)
+
+# Specify the execution name for Cats2D
+help_string = '''Optionally set the path for running Cats2D'''
+parser.add_argument('--c2dpath', action='store', default='cats2d.x',
+                    help=help_string)
+
+# Plot Cats2D regions
+help_string = '''Optionally plot Cats2D regions as they are found. The delay
+                 between plotting events can optionally be specified'''
+parser.add_argument('--c2dplot', action='store', nargs='?', metavar='delay',
+                    const=0.2, help=help_string)
+
+# Don't Flip the x and y coordinates
+help_string = '''Specify that the x and y coordinates shouldn't be flipped for
+                 outputting to Cats2D. Cats2D usually maps x to z and y to r.
+                 Use this option if your DXF is already specified in this way.
+                 Otherwise, the code will flip your coordinates automatically.'''
+parser.add_argument('--noflip', action='store_true', help=help_string)
+
 # Specify the units of the DXF file
-help_string = 'Specify the units for the DXF file'
+help_string = 'Specify the units for the DXF file (default mm)'
 parser.add_argument('--units', action='store', default='mm', help=help_string)
 
 # Pickle the DXFGeometry object
@@ -129,8 +162,8 @@ args = parser.parse_args()
 if args.dxf_file == 'test':
     # Create new standards if specified
     if args.newstandard:
-        print 'Creating new standards for tests'
-        CreateStandards.save_standards(num_tests=4)
+        print('Creating new standards for tests')
+        CreateStandards.save_standards(args, num_tests=4)
     else:
         test_suite(verbose=args.verbose, dxf_test=not(args.nodxf))
     # Exit immediately after testing is complete
@@ -149,6 +182,17 @@ if args.crysmas:
     else:
         crys_file = None
     dxf.output_to_crysmas(dxf_units=args.units, f_name=crys_file)
+
+# Create a Cats2D mesh
+if args.cats2d:
+    if args.c2dplot:
+        plotting_args = {'plotting':True, 'plotting_pause':float(args.c2dplot)}
+    else:
+        plotting_args = {}
+    vertex_list,edge_list,bulge_list = dxf.cats2d_convert(len_scale=6, 
+                                                invert_coords=(not args.noflip))
+    mesh = c2d_premesh_v5.C2DMesh(vertex_list, edge_list, **plotting_args)
+    pexpect_c2dmesh_v2.make_c2d_mesh(mesh, args.c2dpath, working_dir=dxf.work_dir)
 
 # Create a pickle file
 if args.pickle:

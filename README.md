@@ -14,8 +14,10 @@ python MeshGenerator.py ./DXFTests/DXFTest_Clamshellv5.dxf --crysmas
 
 REQUIREMENTS:
 - Python 2.7x
-- dxfgrabber 0.7.5
-- matplotlib (if plotting)
+- dxfgrabber 0.7.5 (0.8.0 is incompatible without patch)
+- matplotlib
+- numpy
+- sortedcontainers 1.5.3
 
 REQUIRED FILES:
 - DXFtoSegments.py

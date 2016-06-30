@@ -5,14 +5,19 @@ Code Written by Jeff Peterson (2016)
 A suite of tests for checking the functionality of the DXFtoSegments module.
 '''
 
+from __future__ import print_function
 import unittest
 from DXFtoSegments import VertexList, Vertex, DXFGeometry
 import dxfgrabber
 import math
 import numpy as np
 from HelperFunctions import bulge_to_arc, approx, ccw_angle_diff
+import lineintersect
 import pickle
 import filecmp
+import c2d_premesh_v5
+import pexpect_c2dmesh_v2
+import os
 
 class TestVertex(unittest.TestCase):
     '''
@@ -61,7 +66,7 @@ class TestVertex(unittest.TestCase):
         '''Add connection information to vertex'''
         new_vertex = (0.,1.)
         self.v.con(new_vertex)
-        check = new_vertex in self.v.connected
+        check = new_vertex in self.v.connections
         self.assertTrue(check, 'new vertex not connected')
 
     def test_connect_multiple(self):
@@ -70,16 +75,16 @@ class TestVertex(unittest.TestCase):
         new_vertex2 = (-2., -2.)
         self.v.con(new_vertex1)
         self.v.con(new_vertex2)
-        check = (new_vertex1 in self.v.connected) and \
-                    (new_vertex2 in self.v.connected)
-        self.assertTrue(check, 'new verticies not connected')
+        check = (new_vertex1 in self.v.connections) and \
+                    (new_vertex2 in self.v.connections)
+        self.assertTrue(check, 'new vertices not connected')
 
     def test_disconnect(self):
         '''Remove connection information from vertex'''
         new_vertex = (0,1) #First connect a vertex
         self.v.con(new_vertex)
         self.v.discon(new_vertex) #Now disconnect it
-        check = new_vertex in self.v.connected
+        check = new_vertex in self.v.connections
         self.assertFalse(check, 'new vertex still connected')
 
 
@@ -89,7 +94,7 @@ class TestVertexList(unittest.TestCase):
     '''
     def setUp(self):
         self.v_grid = set([]) #Create an empty set of vertexes to be tested
-        x_steps, y_steps = 10, 10 #Range/domain of verticies
+        x_steps, y_steps = 10, 10 #Range/domain of vertices
         self.x_low, self.x_high, self.y_low, self.y_high = 0., 1., 0., 1.
         self.v_list = VertexList()
         for x in np.linspace(self.x_low, self.x_high, x_steps):
@@ -100,16 +105,16 @@ class TestVertexList(unittest.TestCase):
         self.v_grid = None
         self.v_list = None
 
-    def test_add_verticies(self):
+    def test_add_vertices(self):
         '''Add new vetecies'''
         for v in self.v_grid:
             self.v_list.add(v)
         check = self.v_list.coordinates == self.v_grid
         self.assertTrue(check, 'vertex list set is not equal to set to be added')
 
-    def test_connect_verticies(self):
-        '''Connect verticies'''
-        # First add all verticies
+    def test_connect_vertices(self):
+        '''Connect vertices'''
+        # First add all vertices
         for v in self.v_grid:
             self.v_list.add(v)
         # Now connect corners together
@@ -131,21 +136,21 @@ class TestVertexList(unittest.TestCase):
         for c in corners:
             other_corners = corners.copy()
             other_corners.remove(c)
-            check = self.v_list.verticies[c].connected == other_corners
+            check = self.v_list.vertices[c].connections == other_corners
             if not check:
                 checks.append(check)
 
-        msg = '{} of {} verticies did not have proper connectivity'.format(len(checks),
+        msg = '{} of {} vertices did not have proper connectivity'.format(len(checks),
                                                                         len(corners))
         self.assertFalse(bool(checks), msg)
 
 
-    def test_disconnect_verticies(self):
-        '''Disconnect verticies'''
-        # First add all verticies
+    def test_disconnect_vertices(self):
+        '''Disconnect vertices'''
+        # First add all vertices
         for v in self.v_grid:
             self.v_list.add(v)
-        # Now all connect corners together
+        # Now connect all corners together
         corners = set([])
         for x in np.linspace(self.x_low, self.x_high, 2):
             for y in np.linspace(self.y_low, self.y_high, 2):
@@ -162,15 +167,25 @@ class TestVertexList(unittest.TestCase):
         corner1 = new_connections.pop()
         corner2 = new_connections.pop()
         self.v_list.disconnect(corner1, corner2)
-        check = (self.v_list.verticies[corner1].connected == new_connections) \
-                and (self.v_list.verticies[corner2].connected == new_connections)
+        check = (self.v_list.vertices[corner1].connections == new_connections) \
+                and (self.v_list.vertices[corner2].connections == new_connections)
         self.assertTrue(check)
 
     def test_remove_vertex(self):
-        '''Remove vertex from list without connections'''
+        '''Remove vertex from connected set of vertecies'''
         # First add them
         for v in self.v_grid:
             self.v_list.add(v)
+        # Now connect corners together
+        corners = set([])
+        for x in np.linspace(self.x_low, self.x_high, 2):
+            for y in np.linspace(self.y_low, self.y_high, 2):
+                corners.add((x,y))
+        # Connect vertex to every other vertex except itself
+        for c1 in corners:
+            for c2 in corners:
+                if c1 != c2:
+                    self.v_list.connect(c1, c2)
         # Create a copy and remove a vertex
         v_grid_new = self.v_grid.copy()
         v_remove = v_grid_new.pop()
@@ -180,11 +195,11 @@ class TestVertexList(unittest.TestCase):
         self.assertTrue(check, 'vertex was not removed properly')
         # Now check if the vertex has been removed from the dict
         with self.assertRaises(KeyError):
-            self.v_list.verticies[v_remove]
+            self.v_list.vertices[v_remove]
 
     def test_move_vertex(self):
         '''Move a vertex'''
-        # First add all verticies
+        # First add all vertices
         for v in self.v_grid:
             self.v_list.add(v)
         # Now move the lowest vertex to a negative value
@@ -208,17 +223,17 @@ class TestDXFGeometry(unittest.TestCase):
         self.test_dxf = None
         self.empty_dxfgeom = None
 
-    def check_verticies(self, tup, dxfgeom, entity):
-        '''verticies are in vertex list and they are connected'''
+    def check_vertices(self, tup, dxfgeom, entity):
+        '''vertices are in vertex list and they are connected'''
         tol = dxfgeom.tol
         start = (approx(tup[0][0], tol), approx(tup[0][1],tol))
         end = (approx(tup[1][0], tol), approx(tup[1][1],tol))
-        # Check to make sure start and end are verticies now
+        # Check to make sure start and end are vertices now
         check = (start in dxfgeom.verts.coordinates) and (end in dxfgeom.verts.coordinates)
-        msg = '{} and {} were not added to verticies'.format(start, end)
+        msg = '{} and {} were not added to vertices'.format(start, end)
         self.assertTrue(check, msg)
-        # Make sure verticies are connected
-        check = end in dxfgeom.verts.verticies[start].connected
+        # Make sure vertices are connected
+        check = end in dxfgeom.verts.vertices[start].connections
         msg = '{} not properly connected by line {}'.format(end, entity)
         self.assertTrue(check, msg)
 
@@ -232,7 +247,7 @@ class TestDXFGeometry(unittest.TestCase):
                 start = (approx(e.start[0], tol=tol), 
                          approx(e.start[1], tol=tol))
                 end = (e.end[0], e.end[1])
-                self.check_verticies((start, end), self.empty_dxfgeom, e)
+                self.check_vertices((start, end), self.empty_dxfgeom, e)
 
     def test_add_arc(self):
         '''add an arc to the geometry'''
@@ -253,7 +268,7 @@ class TestDXFGeometry(unittest.TestCase):
                          approx(radius*math.sin(start_angle) + center[1], tol=tol))
                 end = (approx(radius*math.cos(end_angle) + center[0], tol=tol), 
                        approx(radius*math.sin(end_angle) + center[1], tol=tol))
-                self.check_verticies((start, end), self.empty_dxfgeom, e)
+                self.check_vertices((start, end), self.empty_dxfgeom, e)
 
     def test_add_polyline(self):
         '''add a polyline to the geometry'''
@@ -274,7 +289,7 @@ class TestDXFGeometry(unittest.TestCase):
                              approx(p[1], tol=tol))
                     end = (approx(p_next[0], tol=tol), 
                             approx(p_next[1], tol=tol))
-                    self.check_verticies((start, end), self.empty_dxfgeom, e)
+                    self.check_vertices((start, end), self.empty_dxfgeom, e)
 
     def test_add_entities(self):
         '''add entites from a DXF file'''
@@ -286,6 +301,31 @@ class TestDXFGeometry(unittest.TestCase):
         check = num_added == num_ents
         msg = '''{} entities were added but {} addable entities exist in test file
               '''.format(num_added, num_ents)
+        self.assertTrue(check, msg)
+
+    def test_move_vertex(self):
+        '''move a vertex'''
+        # Lines to be added
+        lines = set([(( (0.,0.),   (1.,0.) ), ()),
+                     (( (0.,0.),   (1.,1.) ), ()),
+                     (( (-1.,-1.), (0.,0.) ), ())])
+
+        # Add lines to geometry
+        self.empty_dxfgeom.segments = lines
+        for l in lines:
+            self.empty_dxfgeom.verts.add(l[0][0])
+            self.empty_dxfgeom.verts.add(l[0][1])
+            self.empty_dxfgeom.verts.connect(l[0][0], l[0][1])
+
+        # Move the (0,0) vertex
+        self.empty_dxfgeom.move_vertex((0,0), (0.5, 0.5))
+
+        # Check whether it worked
+        new_lines = set([(( (0.5,0.5), (1,0) ),     ()),
+                         (( (0.5,0.5), (1,1) ),     ()),
+                         (( (-1,-1),   (0.5,0.5) ), ())])
+        check = new_lines == self.empty_dxfgeom.segments
+        msg = '''Segment list was not updated correctly after vertex move'''
         self.assertTrue(check, msg)
 
     def test_rem_reversed(self):
@@ -310,7 +350,7 @@ class TestDXFGeometry(unittest.TestCase):
         true_arcs = set([bulge_to_arc((0,0), (1,0), -1),
                          bulge_to_arc((0,0), (1,1), 1)])
 
-        # Add all lines and verticies
+        # Add all lines and vertices
         self.empty_dxfgeom.segments |= lines | arcs
         for l in lines:
             self.empty_dxfgeom.verts.add(l[0][0])
@@ -347,9 +387,22 @@ class DXFtoCats2DTests(unittest.TestCase):
     '''Test cases for converting a DXF geometry into a Cats2D mesh'''
     def setUp(self):
         self.dxf4 = DXFGeometry('./DXFTests/DXFTest4.dxf', testing=True)
+        self.ampoule = DXFGeometry('./DXFTests/Ampoule2.dxf')
+        self.directory = './DXFTests/'
+        for f in ['flow.ctrl', 'flow.out', 'flow.mshc', 'mesh_plot.eps', 'memory.dump']:
+            try:
+                os.remove(self.directory+f)
+            except OSError:
+                pass
 
     def tearDown(self):
         self.dxf4 = None
+        self.ampoule = None
+        for f in ['flow.ctrl', 'flow.out', 'flow.mshc', 'mesh_plot.eps', 'memory.dump']:
+            try:
+                os.remove(self.directory+f)
+            except OSError:
+                pass
 
     def test_DXFGeomtoCats(self):
         '''Convert DXF geometry for creating Cats2D mesh'''
@@ -358,6 +411,17 @@ class DXFtoCats2DTests(unittest.TestCase):
         check = self.dxf4.cats2d_convert(invert_coords=False) == pick_info
         msg = 'Cats2D information for DXFTest4 did not match the saved standard'
         self.assertTrue(check, msg)
+
+    def test_DXFtoCatsMesh(self):
+        standard = './DXFTests/flow.mshc.const'
+        test_file = './DXFTests/flow.mshc'
+        vertex_list,edge_list,bulge_list = self.ampoule.cats2d_convert(invert_coords=True, len_scale=6)
+        mesh = c2d_premesh_v5.C2DMesh(vertex_list, edge_list)
+        cats2d_path = 'cats2d.x'
+        pexpect_c2dmesh_v2.make_c2d_mesh(mesh, cats2d_path, working_dir=self.ampoule.work_dir)
+        check = filecmp.cmp(test_file, standard)
+        msg = 'File information differs between {} and {}'.format(standard, test_file)
+        #self.assertTrue(check, msg)
 
 class DXFtoCrysMASTests(unittest.TestCase):
     '''Test cases for converting a DXF geometry into a CrysMAS .pcs file'''
@@ -376,9 +440,220 @@ class DXFtoCrysMASTests(unittest.TestCase):
         msg = 'File information differs between {} and {}'.format(standard, test_file)
         self.assertTrue(check, msg)
 
+
+class LineIntersectTests(unittest.TestCase):
+    '''Check for line intersection'''
+    def test_ccw(self):
+        '''Points are counter-clockwise'''
+        A = (0,0)
+        B = (1,0)
+        C = (0,1)
+        check = lineintersect.check_ccw(A, B, C) == 1
+        msg = '''Points {}, {}, {} were not determined to be
+                 counter-clockwise'''.format(A, B, C)
+        self.assertTrue(check, msg)
+
+    def test_colinear(self):
+        '''Points are colinear to within tolerances'''
+        tol = 1e-05
+        A = (0,0)
+        B = (1,1)
+        C = (0.5+0.99*tol, 0.5)
+        check = lineintersect.check_ccw(A, B, C, tol=tol) == 0
+        msg = '''Points {}, {}, {} were not found to be colinear to within the
+                 specified tolerance of {}'''.format(A, B, C, tol)
+        self.assertTrue(check, msg)
+
+    def test_intersection_event_reversed(self):
+        '''Reversed intersection event equals forward'''
+        line1 = ((0,0), (1,1))
+        line2 = ((1,0), (0,1))
+        result1 = lineintersect.intersection_event(line1, line2)
+        result2 = lineintersect.intersection_event(line2, line1)
+        check = result1 == result2
+        msg = '''Reversed intersection events aren\'t equal'''
+        self.assertTrue(check, msg)
+
+    def test_intersection(self):
+        '''Lines intersect simply'''
+        line1 = ((0,0), (1,1))
+        line2 = ((1,0), (0,1))
+        result = lineintersect.intersection(line1, line2)
+        try:
+            check = result[0] == 1
+        except TypeError:
+            self.fail('No intersection found')
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_no_intersection(self):
+        '''Lines do not intersect'''
+        line1 = ((0,0), (1,1))
+        line2 = ((-1,0), (0,-1))
+        result = lineintersect.intersection(line1, line2)
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertFalse(result, msg)
+
+    def test_intersection_2(self):
+        '''Lines share a common end-point'''
+        line1 = ((0,0), (1,0))
+        line2 = ((1,0), (1,1))
+        result = lineintersect.intersection(line1, line2)
+        try:
+            check = result[0] == 2
+        except TypeError:
+            self.fail('No intersection found')
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_intersection_2_tol(self):
+        '''Lines share a common end-point to within tolerance'''
+        tol = 1e-05
+        line1 = ((0,0),             (1,0))
+        line2 = ((1,0+0.99*tol),    (1,1))
+        result = lineintersect.intersection(line1, line2, tol=tol)
+        try:
+            check = result[0] == 2
+        except TypeError:
+            self.fail('No intersection found')
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_intersection_3(self):
+        '''Line endpoint lies on another line'''
+        line1 = ((0,0),     (0,1))
+        line2 = ((0,0.5),   (1,1))
+        result = lineintersect.intersection(line1, line2)
+        try:
+            check =  result[0] == 3
+        except TypeError:
+            self.fail('No intersection found')
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_intersection_3_tol(self):
+        '''Line endpoint lies on another line to within tolerance'''
+        tol = 1e-05
+        line1 = ((0,0),     (0,1))
+        line2 = ((0+0.99*tol,0.5),   (1,1))
+        result = lineintersect.intersection(line1, line2, tol=tol)
+        try:
+            check = result[0] == 3
+        except TypeError:
+            self.fail('No intersection found')
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_no_intersection_3(self):
+        '''Line endpoint is colinear with another line but no intersection exists'''
+        line1 = ((0,0),     (0,1))
+        line2 = ((0,2),   (1,1))
+        result = lineintersect.intersection(line1, line2)
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertFalse(result, msg)
+
+    def test_intersection_4(self):
+        '''Two lines are colinear'''
+        line1 = ((0,0), (1,1))
+        line2 = ((-1,-1), (2, 2))
+        result = lineintersect.intersection(line1, line2)
+        try:
+            check = result[0] == 4
+        except TypeError:
+            self.fail('No intersection found')
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_intersection_4_tol(self):
+        '''Two lines are colinear within tolerance'''
+        tol = 1e-05
+        line1 = ((0,0+0.99*tol), (1,1))
+        line2 = ((-1,-1), (2, 2))
+        result = lineintersect.intersection(line1, line2, tol=tol)
+        try:
+            check = result[0] == 4
+        except TypeError:
+            self.fail('No intersection found')
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertTrue(check, msg)
+
+    def test_no_intersection_4(self):
+        '''Two lines are colinear without overlapping'''
+        line1 = ((0,0), (1,1))
+        line2 = ((1.5,1.5), (2,2))
+        result = lineintersect.intersection(line1, line2)
+        msg = '''Output of intersection function: {}'''.format(result)
+        self.assertFalse(result, msg)
+
+    def test_dxf_intersection_1(self):
+        '''IntersectTest1.dxf test'''
+        dxf = DXFGeometry('./DXFTests/IntersectTest1.dxf')
+        inters = lineintersect.find_intersections(dxf.verts.vertices, tol=0.6)
+        #print('IntersectTest1.dxf intersections:')
+        types = [1, 3, 1, 3, 4]
+        coords = [(((-8.0, -2.0), (12.0, -2.0)),                            ((-10.0, -5.0), (21.17691454, 13.0))),
+                  (((-8.0, 8.0), (12.0, 8.0)),                              ((21.17691454, 13.0), (-10.0, -5.0))),
+                  (((1.5, 3.0), (4.96410162, 1.0)),                         ((-10.0, -5.0), (21.17691454, 13.0))),
+                  (((17.90646664, 11.11180602), (21.17691454, 5.50880909)), ((-10.0, -5.0), (21.17691454, 13.0))),
+                  (((21.17691454, 5.50880909), (22.49452864, 3.25144618)),  ((17.90646664, 11.11180602), (21.17691454, 5.50880909)))]
+        for k, i in enumerate(inters):
+            check = i.lines == coords[k]
+            msg = 'intersections don\'t match. Standard: {}, Output: {}'.format(coords[k], i.lines)
+            self.assertTrue(check, msg)
+            check = i.type == types[k]
+            msg = 'intersection types don\'t match. Standard: {}, Output: {}'.format(types[k], i.type)
+            self.assertTrue(check, msg)
+            #print('{} - Type: {} {} {}'.format(k+1, i.type, i.lines[0], i.lines[1]))
+
+    def test_dxf_intersection_2(self):
+        '''IntersectTest2.dxf test'''
+        dxf = DXFGeometry('./DXFTests/IntersectTest2.dxf')
+        inters = lineintersect.find_intersections(dxf.verts.vertices, tol=.05)
+        #print('IntersectTest2.dxf intersections:')
+        types = [2, 3, 3, 3, 2, 3, 1, 1, 1, 1, 3, 2, 2, 3]
+        coords = [(((-8.0, -16.0), (-8.0, 8.0)),        ((8.0, -16.0), (-8.0, -16.0))),
+                  (((-8.0, -12.0), (8.0, -12.0)),       ((8.0, -16.0), (8.0, 8.0))),
+                  (((-8.0, -12.0), (8.0, -12.0)),       ((-8.0, 8.0), (-8.0, -16.0))),
+                  (((-8.0, 4.0), (8.0, 4.0)),           ((-8.0, 8.0), (-8.0, -16.0))),
+                  (((-8.0, 8.0), (8.0, 8.0)),           ((-8.0, -16.0), (-8.0, 8.0))),
+                  (((-7.98, -4.0), (7.98, -4.0)),       ((-8.0, -16.0), (-8.0, 8.0))),
+                  (((-4.0, 9.0), (11.0, -16.98076211)), ((8.0, -16.0), (8.0, 8.0))),
+                  (((-4.0, 9.0), (11.0, -16.98076211)), ((-7.98, -4.0), (7.98, -4.0))),
+                  (((-4.0, 9.0), (11.0, -16.98076211)), ((-8.0, 4.0), (8.0, 4.0))),
+                  (((-4.0, 9.0), (11.0, -16.98076211)), ((-8.0, 8.0), (8.0, 8.0))),
+                  (((8.0, -16.0), (8.0, 8.0)),          ((-8.0, 4.0), (8.0, 4.0))),
+                  (((8.0, -16.0), (8.0, 8.0)),          ((-8.0, 8.0), (8.0, 8.0))),
+                  (((8.0, -16.0), (8.0, 8.0)),          ((-8.0, -16.0), (8.0, -16.0))),
+                  (((8.0, -16.0), (8.0, 8.0)),          ((-7.98, -4.0), (7.98, -4.0)))]
+        for k, i in enumerate(inters):
+            check = i.lines == coords[k]
+            msg = 'intersections don\'t match. Standard: {}, Output: {}'.format(coords[k], i.lines)
+            self.assertTrue(check, msg)
+            check = i.type == types[k]
+            msg = 'intersection types don\'t match. Standard: {}, Output: {}'.format(types[k], i.type)
+            self.assertTrue(check, msg)
+            #print('{} - Type: {} {} {}'.format(k+1, i.type, i.lines[0], i.lines[1]))
+
+    def test_dxf_intersection_3(self):
+        '''IntersectTest3.dxf test'''
+        dxf = DXFGeometry('./DXFTests/IntersectTest3.dxf')
+        inters = lineintersect.find_intersections(dxf.verts.vertices)
+        check = [i.type for i in inters] == [2, 1, 4]
+        msg = '''Intersections are incorrect for test'''
+        self.assertTrue(check, msg)
+
+    def test_intersection_point(self):
+        '''Locate intersection point'''
+        line1 = ((0,0), (8, 6))
+        line2 = ((0,6), (8, 0))
+        int_event = lineintersect.intersection_event(line1, line2)
+        check = int_event.intersection_point == (4.0, 3.0)
+        msg = '{} and {} don\'t intersect at (4, 3)'.format(line1, line2)
+        self.assertTrue(check, msg)
+
 def main():
-    print '''Please run the test suite from the MeshMaker.py file by using
-    the command line argument `test` with the optional verbose mode.'''
+    print('''Please run the test suite from the MeshMaker.py file by using
+    the command line argument `test` with the optional verbose mode.''')
 
 # Check whether the script is being excuted by itself
 if __name__=='__main__':

@@ -9,13 +9,16 @@ import numpy as np
 import DXFtoSegments
 from matplotlib import pyplot as plt
 import pickle
+import os
+import c2d_premesh_v5
+import pexpect_c2dmesh_v2
 
-def save_standards(num_tests=4):
+def save_standards(args, num_tests=4):
     '''Creates standards from DXF test files to be used for testing purposes.'''
     geometries = {}
+    directory = './DXFTests/'
     # Open the DXF files and create DXFGeometry objects
     for i in range(num_tests):
-        directory = './DXFTests/'
         file_name = 'DXFTest{}'.format(i+1)
         extension = '.dxf'
         path = directory+file_name+extension
@@ -30,7 +33,7 @@ def save_standards(num_tests=4):
 
         # Create Cats2D-compatible information
         if i == 3:
-            verts, edges, bulges = dxf.cats2d_convert()
+            verts, edges, bulges = dxf.cats2d_convert(invert_coords=False)
             cats_ppath = '{}DXFTest{}_cats2d.pick'.format(directory, i+1)
             f_cats = open(cats_ppath, 'wb')
             pickle.dump((verts, edges, bulges), f_cats)
@@ -45,3 +48,25 @@ def save_standards(num_tests=4):
         else:
             raise Exception('Something went wrong when pickling the data')
         f_new.close()
+
+    # Create a Cats2D Mesh standard
+    file_name = 'Ampoule2'
+    extension = '.dxf'
+    path = directory+file_name+extension
+    dxf = DXFtoSegments.DXFGeometry(path, verbose=False, testing=True)
+    vertex_list,edge_list,bulge_list = dxf.cats2d_convert(invert_coords=True, len_scale=6)
+    mesh = c2d_premesh_v5.C2DMesh(vertex_list, edge_list)
+    # Clean up first
+    for f in ['flow.ctrl', 'flow.out', 'mesh_plot.eps', 'memory.dump', 'flow.mshc']:
+        try:
+            os.remove(directory+f)
+        except OSError:
+            pass
+    pexpect_c2dmesh_v2.make_c2d_mesh(mesh, args.c2dpath, working_dir=dxf.work_dir)
+    # Rename standard and remove extra files
+    os.rename(directory+'flow.mshc', directory+'flow.mshc.const')
+    for f in ['flow.ctrl', 'flow.out', 'mesh_plot.eps', 'memory.dump']:
+        try:
+            os.remove(directory+f)
+        except OSError:
+            pass
