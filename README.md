@@ -10,7 +10,7 @@ the segment.
 
 Example usage:
 
-python MeshGenerator.py ./DXFTests/DXFTest_Clamshellv5.dxf --crysmas
+python MeshMaker.py ./DXFTests/DXFTest_Clamshellv5.dxf --crysmas
 
 REQUIREMENTS:
 - Python 2.7x
